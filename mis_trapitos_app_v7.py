@@ -717,7 +717,7 @@ class App(tk.Tk):
         self.selected_promotion_id = None
         self.cart = []
         self.protocol("WM_DELETE_WINDOW"          , self.on_close)
-        self.show_login()
+
 
     def on_close(self):
         try:
@@ -725,35 +725,7 @@ class App(tk.Tk):
         finally:
             self.destroy()
 
-    def show_login(self):
-        self.clear_window()
-        frame = ttk.Frame(self, padding=35)
-        frame.pack(expand=True)
-        ttk.Label(frame, text="Mis trapitos", font=("Arial", 24, "bold")).grid(row=0, column=0,
-columnspan=2, pady=10)
-        ttk.Label(frame, text="Usuario inicial: admin / 1234"               ).grid(row=1, column=0, columnspan=2,
-pady=5)
-        ttk.Label(frame, text="Usuario").grid(row=2, column=0, sticky="e", padx=5, pady=5)
-        self.login_user = ttk.Entry(frame, width=30)
-        self.login_user.grid(row=2, column=1, padx=5, pady=5)
-        ttk.Label(frame, text="Contraseña").grid(row=3, column=0, sticky="e", padx=5, pady=5)
-        self.login_password = ttk.Entry(frame, width=30, show="*")
-        self.login_password.grid(row=3, column=1, padx=5, pady=5)
-        self.login_user.insert(0, "admin")
-        self.login_password.insert(0, "1234")
-        ttk.Button(frame, text="Entrar", command=self.login).grid(row=4, column=0, columnspan=2,
-pady=14)
-        self.login_password.bind("<Return>", lambda event: self.login())
-
-    def login(self):
-        user = self.db.authenticate(self.login_user.get().strip(),
-self.login_password.get().strip())
-        if not user:
-            messagebox.showerror("Acceso", "Usuario o contraseña incorrectos.")
-            return
-        self.user = user
-        self.show_main()
-
+   
     def show_main(self):
         self.clear_window()
         top = ttk.Frame(self, padding=(10, 8))
