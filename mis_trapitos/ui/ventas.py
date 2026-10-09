@@ -2,14 +2,14 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 from typing import NamedTuple
 
-from mis_trapitos.data.database import PAYMENT_METHODS
-from mis_trapitos.ui.base import ActionBar, FormGrid, ScrollablePage, make_tree
-
-def money(value):
-    try:
-        return f"${float(value):,.2f}"
-    except Exception:
-        return "$0.00"
+from config import PAYMENT_METHODS
+from utils import dinero
+from mis_trapitos.ui.base import (
+    ActionBar,
+    FormGrid,
+    ScrollablePage,
+    make_tree,
+)
 
 
 class ResultadoVenta(NamedTuple):
@@ -179,7 +179,7 @@ class VentasUI(ScrollablePage):
         for line in self.servicio.lineas():
             self.cart_tree.insert("", tk.END, values=(
                 line["id"], line["code"], line["name"], line["quantity"],
-                money(line["unit_price"]), f"{line['promo']:g}%", money(line["line_total"]),
+                dinero(line["unit_price"]), f"{line['promo']:g}%", dinero(line["line_total"]),
             ))
         try:
             subtotal, _, total = self.servicio.totales(self.sale_discount.get())
@@ -188,9 +188,9 @@ class VentasUI(ScrollablePage):
             subtotal, _, total = self.servicio.totales(0)
             discount = 0
         self.ticket_text.delete("1.0", tk.END)
-        self.ticket_text.insert(tk.END, f"Subtotal con promociones: {money(subtotal)}\n")
+        self.ticket_text.insert(tk.END, f"Subtotal con promociones: {dinero(subtotal)}\n")
         self.ticket_text.insert(tk.END, f"Descuento general: {discount:g}%\n")
-        self.ticket_text.insert(tk.END, f"Total estimado: {money(total)}\n")
+        self.ticket_text.insert(tk.END, f"Total estimado: {dinero(total)}\n")
 
     def register_sale_ui(self):
         try:
@@ -203,8 +203,8 @@ class VentasUI(ScrollablePage):
             self.ticket_text.insert(
                 tk.END,
                 f"VENTA REGISTRADA\nTicket: {r.sale_id}\nFecha: {r.fecha}\n"
-                f"Subtotal: {money(r.subtotal)}\nDescuento: {money(r.descuento)}\n"
-                f"Total: {money(r.total)}\nMetodo: {r.metodo_pago}\n",
+                f"Subtotal: {dinero(r.subtotal)}\nDescuento: {dinero(r.descuento)}\n"
+                f"Total: {dinero(r.total)}\nMetodo: {r.metodo_pago}\n",
             )
             self.clear_cart(keep_ticket=True)
             if self.on_venta_registrada:

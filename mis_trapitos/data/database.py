@@ -4,33 +4,17 @@ Este módulo concentra conexión, esquema, migraciones, datos de ejemplo y
 operaciones/consultas de inventario, ventas, clientes y reportes.
 No depende de Tkinter ni de la interfaz gráfica.
 """
-import hashlib
 import os
 import sqlite3
 from datetime import date, datetime, timedelta
 from PIL import Image, ImageDraw
 
-DB_NAME = "mis_trapitos.db"
-DATE_FMT = "%Y-%m-%d"
-DATETIME_FMT = "%Y-%m-%d %H:%M:%S"
-PAYMENT_METHODS = ("Efectivo", "Tarjeta de credito", "Tarjeta de debito", "Transferencia bancaria")
-
-
-def now_text():
-    return datetime.now().strftime(DATETIME_FMT)
-
-
-def today_text():
-    return date.today().strftime(DATE_FMT)
+from config import DATE_FMT, DB_NAME, DATETIME_FMT, PAYMENT_METHODS
+from utils import hash_password, now_text, today_text
 
 
 def date_offset(days):
     return (date.today() + timedelta(days=days)).strftime(DATE_FMT)
-
-
-def hash_password(password):
-    return hashlib.sha256(password.encode("utf-8")).hexdigest()
-
 
 class Database:
     def __init__(self, path=DB_NAME):

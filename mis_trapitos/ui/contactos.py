@@ -8,18 +8,16 @@ transacciones siguen a cargo de Database.
 
 import urllib.parse
 import webbrowser
-from datetime import date
 from tkinter import messagebox, ttk
 import tkinter as tk
-
+from utils import dinero, today_text
 from mis_trapitos.ui.base import ActionBar, FormGrid, ScrollablePage, make_tree
 
 
-def today_text():
-    return date.today().isoformat()
 
 
-def money(value):
+
+def dinero(value):
     try:
         return f"${float(value):,.2f}"
     except Exception:
@@ -159,8 +157,8 @@ class ContactosUI(ttk.Frame):
                 text.insert(
                     tk.END,
                     f"Venta {row['venta']} | {row['fecha']} | {row['codigo']} {row['producto']} | "
-                    f"Cantidad {row['cantidad']} | Linea {money(row['total_linea'])} | "
-                    f"Total venta {money(row['total_venta'])} | {row['estado']}\n",
+                    f"Cantidad {row['cantidad']} | Linea {dinero(row['total_linea'])} | "
+                    f"Total venta {dinero(row['total_venta'])} | {row['estado']}\n",
                 )
         except Exception as e:
             messagebox.showerror("Historial", str(e), parent=self)
@@ -197,7 +195,7 @@ class ContactosUI(ttk.Frame):
         if compras > 0:
             lines.append(
                 f"De acuerdo con su historial, contamos con {compras} compra(s) registrada(s) a su "
-                f"nombre, por un total acumulado de {money(total)}."
+                f"nombre, por un total acumulado de {dinero(total)}."
             )
             if ultima:
                 lines.append(f"Su compra mas reciente fue registrada el {ultima}.")

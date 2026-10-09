@@ -2,7 +2,8 @@ import csv
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
-from mis_trapitos.data.database import Database, DB_NAME, PAYMENT_METHODS
+from config import APP_TITLE, APP_VERSION, DB_NAME, PAYMENT_METHODS
+from mis_trapitos.data.database import Database
 from mis_trapitos.ui.base import (
     ActionBar, FormGrid, ScrollablePage, configure_tree_columns,
     handle_page_event, make_tree,
@@ -15,8 +16,7 @@ from mis_trapitos.ui.promociones import PromocionesUI
 from mis_trapitos.ui.ventas import VentasUI, ServicioVentas
 from mis_trapitos.ui.styles import UI_COLORS, configure_styles
 
-APP_TITLE = "Mis trapitos - Sistema local"
-APP_VERSION = "7.0"
+
 
 CONFIG_ITEMS = [
     ("CI-01", "Codigo fuente principal", "main.py", "Controlado"),
