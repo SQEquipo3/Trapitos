@@ -15,7 +15,8 @@ from mis_trapitos.ui.productos import ProductosUI
 from mis_trapitos.ui.promociones import PromocionesUI
 from mis_trapitos.ui.ventas import VentasUI, ServicioVentas
 from mis_trapitos.ui.styles import UI_COLORS, configure_styles
-
+from mis_trapitos.ui.reportes import ReportesUI
+from mis_trapitos.ui.rastreabilidad import RastreabilidadUI
 
 
 CONFIG_ITEMS = [
@@ -220,7 +221,12 @@ class App(tk.Tk):
         )
         nb.add(self.devoluciones_ui, text="Devoluciones y cancelaciones")
         self.make_reports_tab(nb)
-        self.make_traceability_tab(nb)
+        self.rastreabilidad_ui = RastreabilidadUI(
+            nb,
+            self.db,
+            self.refresh_products
+        )
+        nb.add(self.rastreabilidad_ui, text="Rastreabilidad")
         nb.bind("<<NotebookTabChanged>>", self._on_module_changed)
         self._select_module(0)
 
@@ -269,94 +275,5 @@ class App(tk.Tk):
         if self.productos_ui is not None:
             self.productos_ui.actualizar_inventario()
 
-    def make_reports_tab(self, nb):
-        tab = ScrollablePage(nb)
-        nb.add(tab, text="Reportes")
-        controls = ttk.LabelFrame(tab.body, text="Consulta de reportes", padding=(0, 12))
-        controls.pack(fill="x")
-        fields = FormGrid(controls, columns=2, min_column_width=290)
-        fields.pack(fill="x")
-        self.report_combo = fields.add_combo("Reporte", REPORTS)
-        self.report_combo.set(REPORTS[0])
-        self.report_param = fields.add_field("Parámetro")
-        self.report_hint = ttk.Label(controls, text="El parámetro se utiliza para filtrar por categoría, proveedor, cliente, precio o stock bajo.", style="Muted.TLabel", wraplength=650)
-        self.report_hint.pack(fill="x", pady=(0, 14))
-        controls.bind("<Configure>", lambda event: self._wrap_label(self.report_hint, event.width))
-        actions = ActionBar(controls)
-        actions.pack(fill="x")
-        actions.add("Ejecutar reporte", self.run_report, "Accent.TButton")
-        actions.add("Exportar CSV", self.export_report_csv)
-        table = ttk.LabelFrame(tab.body, text="Resultados", padding=(0, 12, 0, 0))
-        table.pack(fill="both", expand=True, pady=(16, 0))
-        self.report_tree = make_tree(table, ("resultado",), height=8)
-        self.last_report_rows = []
-        self.run_report()
-
-    def run_report(self):
-        try:
-            rows = self.db.report(self.report_combo.get(), self.report_param.get())
-            self.last_report_rows = rows
-            for item in self.report_tree.get_children():
-                self.report_tree.delete(item)
-            if not rows:
-                configure_tree_columns(self.report_tree, ("mensaje",))
-                self.report_tree.insert("", tk.END, values=("Sin resultados",))
-                return
-            columns = list(rows[0].keys())
-            configure_tree_columns(self.report_tree, columns)
-            for row in rows:
-                self.report_tree.insert("", tk.END, values=[row[col] for col in columns])
-        except Exception as e:
-            messagebox.showerror("Reporte", str(e))
-
-    def export_report_csv(self):
-        rows = self.last_report_rows
-        path = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV", "*.csv")])
-        if not path:
-            return
-        with open(path, "w", newline="", encoding="utf-8") as f:
-            writer = csv.writer(f)
-            if rows:
-                writer.writerow(rows[0].keys())
-                for row in rows:
-                    writer.writerow([row[key] for key in row.keys()])
-        messagebox.showinfo("Exportar", f"Reporte exportado en:\n{path}")
-
-    def make_traceability_tab(self, nb):
-        tab = ScrollablePage(nb)
-        nb.add(tab, text="Rastreabilidad")
-        actions = ActionBar(tab.body)
-        actions.pack(fill="x", pady=(0, 18))
-        actions.add("Ejecutar pruebas básicas", self.run_basic_tests)
-        upper = ttk.LabelFrame(tab.body, text="Administración de configuración", padding=(0, 12, 0, 0))
-        upper.pack(fill="x")
-        config_tree = make_tree(upper, ("id", "elemento", "valor", "estado"), height=4)
-        for item in CONFIG_ITEMS:
-            config_tree.insert("", tk.END, values=item)
-        lower = ttk.LabelFrame(tab.body, text="Matriz de rastreabilidad", padding=(0, 12, 0, 0))
-        lower.pack(fill="both", expand=True, pady=(20, 0))
-        trace_tree = make_tree(lower, ("id", "requerimiento", "modulo", "prueba"), height=6)
-        for item in TRACEABILITY:
-            trace_tree.insert("", tk.END, values=item)
-
-    def run_basic_tests(self):
-        try:
-            product = self.db.one("SELECT * FROM products ORDER BY stock DESC LIMIT 1")
-            employee = self.db.one("SELECT * FROM employees ORDER BY id LIMIT 1")
-            customer = self.db.one("SELECT * FROM customers ORDER BY id LIMIT 1")
-            if not product or not employee:
-                raise ValueError("Faltan productos o empleados para probar.")
-            initial_stock = int(product["stock"])
-            if initial_stock < 1:
-                raise ValueError("No hay stock suficiente para la prueba.")
-            servicio = ServicioVentas(self.db)
-            servicio.agregar_producto(product["code"], 1)
-            sale_id = servicio.registrar_venta(customer["id"] if customer else None, employee["id"], PAYMENT_METHODS[0], 0).sale_id
-            after = self.db.scalar("SELECT stock FROM products WHERE id=?", (product["id"],))
-            movement = self.db.one("SELECT id FROM inventory_movements WHERE related_sale_id=? AND movement_type='SALIDA'", (sale_id,))
-            if after != initial_stock - 1 or not movement:
-                raise ValueError("La prueba de inventario no paso.")
-            self.refresh_products()
-            messagebox.showinfo("Pruebas", f"Pruebas correctas. Venta de prueba: {sale_id}. Stock {initial_stock} -> {after}.")
-        except Exception as e:
-            messagebox.showerror("Pruebas", str(e))
+    
+    
