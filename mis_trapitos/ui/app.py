@@ -220,7 +220,8 @@ class App(tk.Tk):
             nb, self.db, on_inventario_actualizado=self.refresh_products
         )
         nb.add(self.devoluciones_ui, text="Devoluciones y cancelaciones")
-        self.make_reports_tab(nb)
+        self.reportes_ui = ReportesUI(nb, self.db)
+        nb.add(self.reportes_ui, text="Reportes")
         self.rastreabilidad_ui = RastreabilidadUI(
             nb,
             self.db,
