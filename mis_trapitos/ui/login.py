@@ -1,3 +1,5 @@
+""" Login page"""
+
 from tkinter import messagebox, ttk
 
 
