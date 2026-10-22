@@ -13,7 +13,9 @@ import tkinter as tk
 from utils import dinero, today_text
 from mis_trapitos.ui.base import ActionBar, FormGrid, ScrollablePage, make_tree
 
-
+from mis_trapitos.data.repositories import clientes as clientes_repo
+from mis_trapitos.data.repositories import proveedores as proveedores_repo
+from mis_trapitos.data.repositories import empleados as empleados_repo
 
 
 
@@ -94,18 +96,14 @@ class ContactosUI(ttk.Frame):
                 self.c_email.get().strip(), self.c_address.get().strip(),
                 self.c_region.get().strip(), self.c_preferences.get().strip(),
             )
-            self.selected_customer_id = self.db.save_customer(self.selected_customer_id, data)
+            self.selected_customer_id = clientes_repo.guardar(self.db, self.selected_customer_id, data)
             self.refresh_customers()
             messagebox.showinfo("Clientes", "Cliente guardado.", parent=self)
         except Exception as e:
             messagebox.showerror("Clientes", str(e), parent=self)
 
     def refresh_customers(self):
-        rows = self.db.query(
-            """SELECT id, name AS nombre, phone AS telefono, email AS correo,
-                      city_region AS region, preferences AS preferencias
-               FROM customers ORDER BY id DESC"""
-        )
+        rows = clientes_repo.listar(self.db)
         self._tree_clear(self.customers_tree)
         for row in rows:
             self.customers_tree.insert("", tk.END, values=[row[key] for key in row.keys()])
@@ -115,7 +113,7 @@ class ContactosUI(ttk.Frame):
         if not sel:
             return
         customer_id = self.customers_tree.item(sel[0], "values")[0]
-        row = self.db.one("SELECT * FROM customers WHERE id=?", (customer_id,))
+        row = clientes_repo.obtener_por_id(self.db, customer_id)
         if not row:
             return
         self.selected_customer_id = row["id"]
@@ -133,7 +131,7 @@ class ContactosUI(ttk.Frame):
         try:
             if not self.selected_customer_id:
                 raise ValueError("Selecciona un cliente.")
-            rows = self.db.customer_history(self.selected_customer_id)
+            rows = clientes_repo.historial(self.db, self.selected_customer_id)
             win = tk.Toplevel(self)
             win.title("Historial de cliente")
             win.geometry("960x600")
@@ -164,20 +162,11 @@ class ContactosUI(ttk.Frame):
             messagebox.showerror("Historial", str(e), parent=self)
 
     def build_customer_email_content(self, customer_id):
-        customer = self.db.one("SELECT * FROM customers WHERE id=?", (customer_id,))
+        customer = clientes_repo.obtener_por_id(self.db, customer_id)
         if not customer:
             raise ValueError("Cliente no encontrado.")
-        stats = self.db.one(
-            """SELECT COUNT(*) AS compras, COALESCE(SUM(total),0) AS total, MAX(sale_datetime) AS ultima
-               FROM sales WHERE customer_id=? AND status='ACTIVA'""",
-            (customer_id,),
-        )
-        favorite = self.db.one(
-            """SELECT p.name AS producto, SUM(si.quantity) AS piezas FROM sales s
-               JOIN sale_items si ON si.sale_id=s.id JOIN products p ON p.id=si.product_id
-               WHERE s.customer_id=? AND s.status='ACTIVA' GROUP BY p.id ORDER BY piezas DESC LIMIT 1""",
-            (customer_id,),
-        )
+        stats = clientes_repo.resumen_compras(self.db, customer_id)
+        favorite = clientes_repo.producto_favorito(self.db, customer_id)
         name = customer["name"] or "cliente"
         first_name = name.split()[0] if name.split() else name
         preferences = customer["preferences"] or ""
@@ -320,18 +309,14 @@ class ContactosUI(ttk.Frame):
                 self.s_address.get().strip(), self.s_products.get().strip(),
                 self.s_last_order.get().strip() or today_text(),
             )
-            self.selected_supplier_id = self.db.save_supplier(self.selected_supplier_id, data)
+            self.selected_supplier_id = proveedores_repo.guardar(self.db, self.selected_supplier_id, data)
             self.refresh_suppliers()
             messagebox.showinfo("Proveedores", "Proveedor guardado.", parent=self)
         except Exception as e:
             messagebox.showerror("Proveedores", str(e), parent=self)
 
     def refresh_suppliers(self):
-        rows = self.db.query(
-            """SELECT id, name AS nombre, phone AS telefono, address AS direccion,
-                      products_supplied AS suministra, last_order_date AS ultimo_pedido
-               FROM suppliers ORDER BY id DESC"""
-        )
+        rows = proveedores_repo.listar(self.db)
         self._tree_clear(self.suppliers_tree)
         for row in rows:
             self.suppliers_tree.insert("", tk.END, values=[row[key] for key in row.keys()])
@@ -341,7 +326,7 @@ class ContactosUI(ttk.Frame):
         if not sel:
             return
         supplier_id = self.suppliers_tree.item(sel[0], "values")[0]
-        row = self.db.one("SELECT * FROM suppliers WHERE id=?", (supplier_id,))
+        row = proveedores_repo.obtener_por_id(self.db, supplier_id)
         if not row:
             return
         self.selected_supplier_id = row["id"]
@@ -383,7 +368,7 @@ class ContactosUI(ttk.Frame):
         try:
             if not self.e_name.get().strip() or not self.e_username.get().strip():
                 raise ValueError("Nombre y usuario son obligatorios.")
-            self.selected_employee_id = self.db.save_employee(
+            self.selected_employee_id = empleados_repo.guardar(self.db,
                 self.selected_employee_id,
                 self.e_name.get().strip(),
                 self.e_username.get().strip(),
@@ -396,9 +381,7 @@ class ContactosUI(ttk.Frame):
             messagebox.showerror("Empleados", str(e), parent=self)
 
     def refresh_employees(self):
-        rows = self.db.query(
-            "SELECT id, name AS nombre, username AS usuario, role AS rol FROM employees ORDER BY id DESC"
-        )
+        rows = empleados_repo.listar(self.db)
         self._tree_clear(self.employees_tree)
         for row in rows:
             self.employees_tree.insert("", tk.END, values=[row[key] for key in row.keys()])
@@ -408,7 +391,7 @@ class ContactosUI(ttk.Frame):
         if not sel:
             return
         employee_id = self.employees_tree.item(sel[0], "values")[0]
-        row = self.db.one("SELECT * FROM employees WHERE id=?", (employee_id,))
+        row = empleados_repo.obtener_por_id(self.db, employee_id)
         if not row:
             return
         self.selected_employee_id = row["id"]
