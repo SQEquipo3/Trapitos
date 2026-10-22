@@ -1,4 +1,4 @@
-""" Login page"""
+""" Login page trapitos"""
 
 from tkinter import messagebox, ttk
 
