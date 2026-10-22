@@ -11,6 +11,10 @@ from mis_trapitos.ui.base import (
     make_tree,
 )
 
+from mis_trapitos.data.repositories import clientes as clientes_repo
+from mis_trapitos.data.repositories import productos as productos_repo
+from mis_trapitos.data.repositories import ventas as ventas_repo
+
 
 class ResultadoVenta(NamedTuple):
     sale_id: int
@@ -38,7 +42,7 @@ class ServicioVentas:
             qty = int(quantity)
         except (TypeError, ValueError):
             raise ValueError("Cantidad no valida.")
-        product = self.db.one("SELECT * FROM products WHERE code=?", (code,))
+        product = productos_repo.obtener_por_codigo(self.db, code)
         if not product:
             raise ValueError("No existe producto con ese codigo.")
         if qty <= 0:
@@ -59,7 +63,7 @@ class ServicioVentas:
         """Devuelve las partidas del carrito con promoción vigente y total de línea."""
         rows = []
         for item in self.cart:
-            product = self.db.one("SELECT * FROM products WHERE id=?", (item["product_id"],))
+            product = productos_repo.obtener_por_id(self.db, item["product_id"])
             if not product:
                 continue
             promo = self.db.active_promotion_percent(product["id"])
@@ -103,12 +107,12 @@ class ServicioVentas:
         if metodo_pago not in PAYMENT_METHODS:
             raise ValueError("Metodo de pago no valido.")
         descuento = self.parsear_descuento(descuento)
-        if customer_id is not None and not self.db.one("SELECT id FROM customers WHERE id=?", (customer_id,)):
+        if customer_id is not None and not clientes_repo.existe(self.db, customer_id):
             raise ValueError("Cliente no encontrado.")
         sale_id, subtotal, monto, total = self.db.register_sale(
             customer_id, employee_id, metodo_pago, descuento, self.cart
         )
-        fecha = self.db.scalar("SELECT sale_datetime FROM sales WHERE id=?", (sale_id,))
+        fecha = ventas_repo.obtener_fecha(self.db, sale_id)
         self.vaciar()
         return ResultadoVenta(sale_id, fecha, subtotal, monto, total, metodo_pago)
 
