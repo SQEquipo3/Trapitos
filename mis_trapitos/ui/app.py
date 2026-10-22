@@ -1,3 +1,5 @@
+""" Interfaz y orquestador"""
+
 import csv
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
