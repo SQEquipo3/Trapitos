@@ -1,3 +1,4 @@
+""" Login app """
 from tkinter import messagebox, ttk
 
 
