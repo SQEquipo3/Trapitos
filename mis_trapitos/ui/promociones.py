@@ -3,6 +3,8 @@ from tkinter import messagebox, ttk
 
 from mis_trapitos.data.database import today_text, date_offset
 from mis_trapitos.ui.base import ActionBar, FormGrid, ScrollablePage, make_tree, tree_clear, set_entries
+from mis_trapitos.data.repositories import promociones as promociones_repo
+from mis_trapitos.data.repositories import productos as productos_repo
 
 
 class PromocionesUI(ScrollablePage):
@@ -37,9 +39,10 @@ class PromocionesUI(ScrollablePage):
             discount = float(self.pr_discount.get() or 0)
             if discount < 0 or discount > 100:
                 raise ValueError("Descuento no valido.")
-            if not self.db.one("SELECT id FROM products WHERE id=?", (product_id,)):
+            if not productos_repo.obtener_por_id(self.db, product_id):
                 raise ValueError("Producto no encontrado.")
-            self.selected_promotion_id = self.db.save_promotion(
+            self.selected_promotion_id = promociones_repo.guardar(
+                self.db,
                 self.selected_promotion_id,
                 product_id,
                 discount,
@@ -52,12 +55,7 @@ class PromocionesUI(ScrollablePage):
             messagebox.showerror("Promociones", str(e))
 
     def refresh_promotions(self):
-        rows = self.db.query(
-            "SELECT pr.id, pr.product_id AS producto_id, p.code AS codigo, p.name "
-            "AS producto, pr.discount_percent AS descuento, pr.start_date AS inicio, "
-            "pr.end_date AS fin FROM promotions pr JOIN products p ON p.id=pr.product_id "
-            "ORDER BY pr.id DESC"
-        )
+        rows = promociones_repo.listar(self.db)
         tree_clear(self.promotions_tree)
         for row in rows:
             self.promotions_tree.insert("", tk.END, values=[row[key] for key in row.keys()])
@@ -67,7 +65,7 @@ class PromocionesUI(ScrollablePage):
         if not sel:
             return
         promotion_id = self.promotions_tree.item(sel[0], "values")[0]
-        row = self.db.one("SELECT * FROM promotions WHERE id=?", (promotion_id,))
+        row = promociones_repo.obtener_por_id(self.db, promotion_id)
         if not row:
             return
         self.selected_promotion_id = row["id"]

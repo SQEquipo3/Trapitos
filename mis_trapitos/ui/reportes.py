@@ -11,9 +11,9 @@ from mis_trapitos.ui.base import (
     make_tree,
 )
 
+from mis_trapitos.data.repositories import reportes as reportes_repo
 
-# MUEVE AQUÍ LA LISTA REPORTS COMPLETA QUE TIENES EN app.py.
-# No cambies los nombres de los reportes.
+
 REPORTS = [
     "Inventario general actualizado",
     "Productos con stock bajo",
@@ -132,7 +132,8 @@ class ReportesUI(ScrollablePage):
 
     def run_report(self):
         try:
-            rows = self.db.report(
+            rows = reportes_repo.ejecutar(
+                self.db,
                 self.report_combo.get(),
                 self.report_param.get(),
             )
