@@ -1,0 +1,21 @@
+id: UTS_PRO_01
+level: UTS
+module: productos
+name: Alta de producto y búsqueda por código
+reqs:
+- RF-01
+tests:
+- tests/test_inventario.py::test_alta_producto_guarda_datos
+- tests/test_inventario.py::test_buscar_producto_por_codigo_y_producto_inexistente
+objective: Verificar que save_product persiste todos los campos del producto y que se puede recuperar por código;
+  un código inexistente regresa None.
+pre: BD SQLite temporal vacía.
+steps:
+- Crear Database temporal
+- Guardar el producto BL-01 (stock 5, precio 200)
+- Consultar por id y por código
+- Consultar un código inexistente
+expected:
+- El producto se guarda con código, stock y precio capturados
+- La búsqueda por código regresa el mismo id
+- El código inexistente regresa None

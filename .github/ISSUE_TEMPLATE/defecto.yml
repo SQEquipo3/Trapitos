@@ -1,0 +1,22 @@
+name: Defecto (bug)
+description: Defecto encontrado por una prueba. Alimenta la hoja «Bug report».
+title: "[DEF] <resumen>"
+labels: ["defect"]
+body:
+  - type: input
+    id: tc
+    attributes: {label: TC que lo detectó, description: "p. ej. ITS_VEN_08"}
+    validations: {required: true}
+  - type: textarea
+    id: pasos
+    attributes: {label: Pasos para reproducir}
+    validations: {required: true}
+  - type: dropdown
+    id: severidad
+    attributes:
+      label: Severidad
+      options: ["1- High", "2- Medium", "3- Low"]
+    validations: {required: true}
+  - type: textarea
+    id: esperado
+    attributes: {label: Esperado vs. real}

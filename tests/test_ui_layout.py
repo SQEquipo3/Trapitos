@@ -80,7 +80,7 @@ class LayoutTest(unittest.TestCase):
             original_styles(app)
 
         with tempfile.TemporaryDirectory(prefix="trapitos-layout-") as directory:
-            with patch.object(Database, "seed_examples"), \
+            with patch("mis_trapitos.data.database.seed_examples"), \
                     patch.object(App, "_configure_styles", configure), \
                     patch.object(messagebox, "showerror") as error:
                 app = App(db_path=str(Path(directory) / "layout.db"))

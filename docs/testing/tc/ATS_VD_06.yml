@@ -1,0 +1,16 @@
+id: ATS_VD_06
+level: ATS
+module: contactos
+name: VD-06 Historial de cliente refleja cancelaciones
+reqs:
+- RF-11
+- RF-12
+tests:
+- tests/test_aceptacion.py::test_vd06_historial_de_cliente_refleja_cancelaciones
+objective: El resumen cuenta solo compras activas y el historial muestra ambas.
+pre: Cliente con dos compras, una cancelada.
+steps:
+- Consultar resumen e historial
+expected:
+- 'Resumen: 1 compra'
+- 'Historial: estados ACTIVA y CANCELADA'

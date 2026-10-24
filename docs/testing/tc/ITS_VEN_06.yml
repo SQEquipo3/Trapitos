@@ -1,0 +1,18 @@
+id: ITS_VEN_06
+level: ITS
+module: ventas
+name: Cancelación repone todo y bloquea operaciones posteriores
+reqs:
+- RF-05
+tests:
+- tests/test_ventas.py::test_cancelacion_repone_todo_y_marca_venta
+- tests/test_ventas.py::test_cancelar_dos_veces_o_devolver_en_cancelada_es_rechazado
+objective: cancel_sale restaura stock, marca CANCELADA y evita doble cancelación o devolución.
+pre: Venta de 4 piezas.
+steps:
+- Cancelar la venta
+- Cancelar de nuevo
+- Intentar devolver sobre la venta cancelada
+expected:
+- Stock restaurado, estado CANCELADA y 1 registro en cancellations
+- Ambos intentos posteriores levantan ValueError

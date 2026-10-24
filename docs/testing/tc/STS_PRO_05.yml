@@ -1,0 +1,20 @@
+id: STS_PRO_05
+level: STS
+module: productos
+name: Refresco y selección en la tabla de inventario
+reqs:
+- RNF-01
+tests:
+- tests/test_ui_productos.py::ProductosUITest::test_limpiar_no_restaura_seleccion_por_eventos_pendientes
+- tests/test_ui_productos.py::ProductosUITest::test_otro_componente_puede_recargar_el_inventario
+- tests/test_ui_productos.py::ProductosUITest::test_refrescar_sin_cambio_externo_conserva_edicion_pendiente
+objective: El inventario se actualiza cuando otro componente cambia datos sin perder la edición pendiente.
+pre: Módulo de productos abierto.
+steps:
+- Limpiar formulario
+- Recargar desde otro componente
+- Refrescar sin cambios externos
+expected:
+- No se restaura la selección
+- Se ven datos nuevos
+- La edición pendiente se conserva

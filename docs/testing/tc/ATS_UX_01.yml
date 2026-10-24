@@ -1,0 +1,15 @@
+id: ATS_UX_01
+level: ATS
+module: interfaz
+name: Recorrido de usabilidad con la dueña de la tienda
+reqs:
+- RF-06
+- RF-01
+objective: Una persona no técnica registra un producto y una venta sin ayuda.
+pre: Aplicación instalada con datos de ejemplo.
+steps:
+- Pedir que registre un producto
+- Pedir que venda dos prendas con promoción
+- Anotar dudas y errores
+expected:
+- Completa ambas tareas sin asistencia en < 5 min

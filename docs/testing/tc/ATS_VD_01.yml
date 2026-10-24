@@ -1,0 +1,17 @@
+id: ATS_VD_01
+level: ATS
+module: productos
+name: VD-01 Alta de variantes y consulta de inventario
+reqs:
+- RF-01
+- RF-02
+- RF-14
+tests:
+- tests/test_aceptacion.py::test_vd01_alta_de_variantes_y_consulta_de_inventario
+objective: La dueña registra un vestido en tres variantes y las consulta en inventario.
+pre: BD limpia.
+steps:
+- Registrar S/Rojo (2), M/Rojo (5) y M/Negro (7)
+- Abrir el inventario
+expected:
+- Tres filas con existencias 2, 5 y 7

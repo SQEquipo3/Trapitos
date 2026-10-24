@@ -1,0 +1,21 @@
+id: ITS_CON_01
+level: ITS
+module: contactos
+name: Alta/edición de clientes, historial y producto favorito
+reqs:
+- RF-11
+- RF-12
+tests:
+- tests/test_contactos.py::test_alta_y_edicion_de_cliente
+- tests/test_contactos.py::test_historial_resumen_y_producto_favorito
+- tests/test_reportes.py::test_historial_de_cliente_incluye_estado_de_cada_venta
+objective: El historial del cliente enlaza ventas, partidas y productos y muestra el estado de cada venta.
+pre: Cliente con dos ventas, una cancelada.
+steps:
+- Guardar y editar cliente
+- Registrar ventas
+- Consultar historial, resumen y favorito
+expected:
+- Datos editados persisten
+- Historial con ACTIVA y CANCELADA
+- Favorito = producto con más piezas

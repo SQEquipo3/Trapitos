@@ -1,0 +1,19 @@
+id: UTS_VEN_08
+level: UTS
+module: ventas
+name: 'Varias promociones vigentes: aplica la mayor; porcentaje inválido es rechazado'
+reqs:
+- RF-09
+- RF-10
+tests:
+- tests/test_ventas.py::test_con_varias_promociones_vigentes_aplica_la_mayor
+- tests/test_ventas.py::test_promocion_con_porcentaje_invalido_es_rechazada
+objective: Resolver traslapes de promoción y validar el porcentaje (0–100).
+pre: Un producto registrado.
+steps:
+- Crear promociones vigentes de 10 % y 30 %
+- Consultar el porcentaje activo
+- Intentar crear una promoción de 120 %
+expected:
+- El porcentaje activo es 30
+- La promoción de 120 % levanta IntegrityError

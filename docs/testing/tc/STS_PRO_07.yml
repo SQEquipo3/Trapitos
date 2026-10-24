@@ -1,0 +1,16 @@
+id: STS_PRO_07
+level: STS
+module: productos
+name: Reabrir sesión recrea el módulo y conserva inventario
+reqs:
+- RNF-01
+tests:
+- tests/test_ui_productos.py::ProductosAppIntegrationTest::test_reabrir_sesion_recrea_modulo_y_conserva_inventario
+objective: Tras cerrar y reabrir sesión el inventario persiste.
+pre: Aplicación iniciada.
+steps:
+- Cerrar sesión
+- Volver a entrar
+- Abrir inventario
+expected:
+- Los productos siguen presentes

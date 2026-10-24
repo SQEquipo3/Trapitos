@@ -1,0 +1,14 @@
+id: ATS_INS_01
+level: ATS
+module: interfaz
+name: Instalación y arranque en equipo limpio sin internet
+reqs:
+- RNF-01
+objective: La aplicación se instala desde requirements.txt y arranca en un equipo sin conexión.
+pre: Equipo limpio con Python 3.12.
+steps:
+- Instalar dependencias desde un wheelhouse local
+- Ejecutar python main.py
+- Iniciar sesión
+expected:
+- Aplicación operativa sin acceso a internet

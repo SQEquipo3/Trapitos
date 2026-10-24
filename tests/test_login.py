@@ -22,7 +22,7 @@ class LoginTest(unittest.TestCase):
     def setUp(self):
         directory = tempfile.TemporaryDirectory(prefix="trapitos-login-")
         self.addCleanup(directory.cleanup)
-        with patch.object(Database, "seed_examples"):
+        with patch("mis_trapitos.data.database.seed_examples"):
             self.db = Database(str(Path(directory.name) / "login.db"))
         self.addCleanup(self.db.close)
         self.employee_id = self.db.save_employee(
@@ -88,7 +88,7 @@ class SessionTest(unittest.TestCase):
         directory = tempfile.TemporaryDirectory(prefix="trapitos-session-")
         self.addCleanup(directory.cleanup)
         self.path = str(Path(directory.name) / "app.db")
-        with patch.object(Database, "seed_examples"):
+        with patch("mis_trapitos.data.database.seed_examples"):
             self.app = application.App(db_path=self.path)
         self.app.withdraw()
         self.addCleanup(self.close_app)

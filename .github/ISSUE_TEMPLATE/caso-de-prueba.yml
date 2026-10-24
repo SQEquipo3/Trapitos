@@ -1,0 +1,50 @@
+name: Caso de prueba (TC)
+description: Un TC del SW Test Plan / TC Design. Al cerrarse con su PR alimenta el Excel y Grafana.
+title: "[TC] <ID> — <nombre>"
+labels: ["tipo:test-case"]
+body:
+  - type: input
+    id: tc_id
+    attributes:
+      label: ID del TC
+      description: "Formato NIVEL_MODULO_NN, p. ej. UTS_VEN_01 (UTS unitaria, ITS integración, STS sistema, ATS aceptación)"
+    validations: {required: true}
+  - type: dropdown
+    id: nivel
+    attributes:
+      label: Nivel de prueba
+      options: [Unitaria, Integración, Sistema, Aceptación]
+    validations: {required: true}
+  - type: dropdown
+    id: modulo
+    attributes:
+      label: Módulo
+      options: [productos, ventas, reportes, contactos, interfaz]
+    validations: {required: true}
+  - type: input
+    id: reqs
+    attributes:
+      label: Requisitos cubiertos
+      description: "RF-xx / RNF-01 del SDD §9"
+    validations: {required: true}
+  - type: textarea
+    id: objetivo
+    attributes: {label: Objetivo de la prueba}
+    validations: {required: true}
+  - type: textarea
+    id: pasos
+    attributes: {label: Pasos}
+    validations: {required: true}
+  - type: textarea
+    id: esperado
+    attributes: {label: Resultado esperado}
+    validations: {required: true}
+  - type: checkboxes
+    id: hecho
+    attributes:
+      label: Definición de terminado
+      options:
+        - label: "Ficha creada en docs/testing/tc/<ID>.yml"
+        - label: "Prueba escrita en tests/ (o TC manual ejecutado con manual_result)"
+        - label: "pytest pasa en el PR (tests.yml en verde)"
+        - label: "El PR dice «Closes #N»"

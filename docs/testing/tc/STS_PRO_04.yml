@@ -1,0 +1,15 @@
+id: STS_PRO_04
+level: STS
+module: productos
+name: Exportación del inventario a CSV
+reqs:
+- RF-03
+tests:
+- tests/test_ui_productos.py::ProductosUITest::test_exportacion_csv_conserva_variantes_y_texto
+objective: El CSV conserva variantes y caracteres especiales.
+pre: Inventario con variantes.
+steps:
+- Exportar a CSV
+- Leer el archivo
+expected:
+- Todas las variantes presentes y texto íntegro

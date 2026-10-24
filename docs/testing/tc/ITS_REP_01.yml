@@ -1,0 +1,22 @@
+id: ITS_REP_01
+level: ITS
+module: reportes
+name: 'Reportes de catálogo: disponibles por categoría, ofertas y mayor descuento'
+reqs:
+- RF-15
+- RF-16
+- RF-24
+tests:
+- tests/test_reportes.py::test_rf15_disponibles_por_categoria_excluye_sin_stock
+- tests/test_reportes.py::test_rf15_requiere_categoria
+- tests/test_reportes.py::test_rf16_y_rf24_ofertas_vigentes_y_mayor_descuento
+objective: Los reportes filtran por stock>0, vigencia de promoción y devuelven solo el mayor descuento.
+pre: Conjunto de datos conocido (4 productos, 3 promociones, una vencida).
+steps:
+- Ejecutar disponibles por 'Ropa' y 'Accesorios'
+- Ejecutar sin categoría
+- Ejecutar ofertas y mayor descuento
+expected:
+- Solo productos con stock>0
+- ValueError al omitir categoría
+- La oferta vencida no aparece; el mayor descuento es 30 %

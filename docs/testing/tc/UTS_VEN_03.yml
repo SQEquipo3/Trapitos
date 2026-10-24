@@ -1,0 +1,16 @@
+id: UTS_VEN_03
+level: UTS
+module: ventas
+name: Los cuatro métodos de pago son aceptados
+reqs:
+- RF-07
+tests:
+- tests/test_ventas.py::test_los_cuatro_metodos_de_pago_son_aceptados
+objective: Cada método de pago configurado permite registrar una venta y se guarda tal cual.
+pre: Empleado y producto con stock 50.
+steps:
+- Para cada método (efectivo, crédito, débito, transferencia) registrar una venta
+- Leer sales.payment_method
+expected:
+- Las cuatro ventas se registran
+- El método guardado coincide con el elegido

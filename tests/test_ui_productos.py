@@ -68,7 +68,7 @@ class TemporaryInventoryTest(unittest.TestCase):
         directory = tempfile.TemporaryDirectory(prefix="trapitos-tests-")
         self.addCleanup(directory.cleanup)
         self.directory = Path(directory.name)
-        self.start_patch(patch.object(Database, "seed_examples"))
+        self.start_patch(patch("mis_trapitos.data.database.seed_examples"))
         self.info = self.start_patch(patch.object(messagebox, "showinfo"))
         self.error = self.start_patch(patch.object(messagebox, "showerror"))
         self.warning = self.start_patch(patch.object(messagebox, "showwarning"))

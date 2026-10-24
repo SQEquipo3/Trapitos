@@ -1,0 +1,16 @@
+id: ITS_REP_04
+level: ITS
+module: reportes
+name: Ventas de los últimos tres días
+reqs:
+- RF-19
+tests:
+- tests/test_reportes.py::test_rf19_ventas_ultimos_tres_dias
+objective: El reporte solo contiene ventas dentro de la ventana de tres días.
+pre: Ventas de hoy, hace 2 días y hace 20 días.
+steps:
+- Ejecutar el reporte
+- Revisar las fechas devueltas
+expected:
+- Todas las fechas >= hoy − 3 días
+- Al menos 2 ventas

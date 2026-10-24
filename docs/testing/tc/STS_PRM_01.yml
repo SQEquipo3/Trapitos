@@ -1,0 +1,20 @@
+id: STS_PRM_01
+level: STS
+module: ventas
+name: 'Promociones: alta, edición y descuento aplicado en venta'
+reqs:
+- RF-09
+- RF-10
+tests:
+- tests/test_promociones_devoluciones.py::PromocionesUITest::test_alta_edicion_limpieza_y_descuento_aplicado_en_venta
+- tests/test_promociones_devoluciones.py::PromocionesSessionTest
+objective: La pantalla de promociones crea y edita ofertas y la venta usa el descuento.
+pre: Producto registrado.
+steps:
+- Crear promoción
+- Editarla y limpiar
+- Vender el producto
+- Reabrir sesión
+expected:
+- El descuento aparece en la venta
+- La sesión reabierta conserva promociones y reinicia selección

@@ -1,0 +1,18 @@
+id: ITS_INV_03
+level: ITS
+module: productos
+name: Conciliación stock = suma de movimientos
+reqs:
+- RNF-01
+- RF-04
+tests:
+- tests/test_inventario.py::test_stock_es_suma_de_movimientos
+objective: Tras venta, devolución y ajuste, el stock visible coincide con el kardex.
+pre: Producto con stock 10 y un empleado.
+steps:
+- Vender 4
+- Devolver 1
+- Ajustar el stock a 20
+- Sumar inventory_movements del producto
+expected:
+- La suma de movimientos = 20 = stock del producto

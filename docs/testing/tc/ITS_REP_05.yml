@@ -1,0 +1,21 @@
+id: ITS_REP_05
+level: ITS
+module: reportes
+name: 'Reportes con parámetro: por proveedor y compras repetidas por cliente'
+reqs:
+- RF-20
+- RF-21
+tests:
+- tests/test_reportes.py::test_rf20_productos_por_proveedor_por_id_y_por_nombre_parcial
+- tests/test_reportes.py::test_rf21_productos_repetidos_por_cliente
+objective: Aceptan id o nombre parcial y validan parámetros faltantes o no numéricos.
+pre: Proveedor 'Textiles Norte' y cliente con 3 piezas de BL en dos compras.
+steps:
+- Consultar por id de proveedor
+- Por nombre parcial 'norte'
+- Sin parámetro
+- Repetidos por cliente con id válido y con 'abc'
+expected:
+- Ambos regresan BL
+- ValueError sin parámetro
+- BL con 3 piezas; 'abc' levanta ValueError

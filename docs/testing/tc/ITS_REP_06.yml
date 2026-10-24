@@ -1,0 +1,26 @@
+id: ITS_REP_06
+level: ITS
+module: reportes
+name: 'Reportes de inventario: precio superior, sin ventas, stock bajo e inventario general'
+reqs:
+- RF-23
+- RF-26
+- RF-03
+tests:
+- tests/test_reportes.py::test_rf23_precio_superior_estricto_con_existencias
+- tests/test_reportes.py::test_rf26_sin_ventas_en_tres_meses
+- tests/test_reportes.py::test_inventario_general_y_stock_bajo
+- tests/test_reportes.py::test_reporte_inexistente_levanta_error
+- tests/test_reportes.py::test_ventas_por_empleado_y_resumen_de_utilidades
+objective: Comparación estricta de precio, exclusión por ventana de 3 meses y reportes operativos.
+pre: Conjunto de datos conocido.
+steps:
+- Precio superior a 200 y a 900
+- Productos no vendidos en tres meses
+- Stock bajo (≤3)
+- Reporte inexistente
+expected:
+- Comparación estricta (>)
+- Solo BO y VI
+- BO, VI y ZA
+- ValueError 'Reporte no reconocido'
