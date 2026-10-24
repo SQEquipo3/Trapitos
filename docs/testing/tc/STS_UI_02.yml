@@ -1,0 +1,15 @@
+id: STS_UI_02
+level: STS
+module: interfaz
+name: Redimensionar y navegar conserva captura, selección y carrito
+reqs:
+- RF-06
+tests:
+- tests/test_ui_layout.py::LayoutTest::test_redimensionar_y_navegar_conserva_captura_seleccion_y_carrito
+objective: El estado de captura sobrevive a cambios de tamaño y navegación.
+pre: Carrito con productos.
+steps:
+- Redimensionar la ventana
+- Cambiar de pantalla y volver
+expected:
+- Captura, selección y carrito intactos

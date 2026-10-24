@@ -1,0 +1,17 @@
+id: ITS_VEN_05
+level: ITS
+module: ventas
+name: Devoluciones inválidas no alteran datos
+reqs:
+- RF-05
+tests:
+- tests/test_ventas.py::test_devolucion_invalida_no_altera_datos
+- tests/test_ventas.py::test_no_se_puede_devolver_mas_de_lo_vendido_en_dos_devoluciones
+objective: Cantidad 0, negativa, mayor a la vendida o acumulada mayor a la vendida se rechaza.
+pre: Venta de 3–5 piezas.
+steps:
+- Devolver 0, −1 y 6 de una venta de 5
+- Devolver 2 y luego otras 2 de una venta de 3
+expected:
+- ValueError 'Cantidad de devolucion no valida'
+- Stock y tabla returns sin cambios

@@ -1,0 +1,59 @@
+name: Tests
+
+# Historia #27: corre las pruebas en cada Pull Request (y en main) para ver pass/fail antes de hacer merge.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Dependencias del sistema (Tkinter + pantalla virtual)
+        run: sudo apt-get update && sudo apt-get install -y xvfb tk
+
+      - name: Instalar requirements
+        run: pip install -r requirements-dev.txt
+
+      - name: Ejecutar pytest con cobertura
+        run: |
+          mkdir -p reports
+          xvfb-run -a pytest \
+            --cov=mis_trapitos --cov-report=term-missing \
+            --cov-report=json:reports/coverage.json \
+            --junitxml=reports/junit.xml
+
+      # El mismo artefacto que consume el colector de métricas (Grafana): coverage.json + junit.xml
+      - name: Publicar reportes de pruebas
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            reports/coverage.json
+            reports/junit.xml
+            reports/results.json
+          if-no-files-found: warn
+
+      - name: Generar SW Test Plan, TC Design y Test Report
+        if: always()
+        run: python tools/generar_documentos.py
+
+      - name: Publicar entregables (Excel + diagramas)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: entregables-qa
+          path: entregables/
+          if-no-files-found: warn

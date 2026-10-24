@@ -1,0 +1,2 @@
+# Dependencias de ejecución de «Mis Trapitos» (Tkinter y sqlite3 vienen con Python).
+Pillow>=10.0

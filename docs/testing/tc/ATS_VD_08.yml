@@ -1,0 +1,16 @@
+id: ATS_VD_08
+level: ATS
+module: productos
+name: VD-08 Consistencia de inventario entre dos terminales (LAN)
+reqs:
+- RNF-01
+blocked_by: DEF-004
+objective: Verificar que una venta en la terminal A se refleja en la terminal B en ≤ 5 s.
+pre: Dos equipos en la misma red local con la aplicación; brecha B-01 (aún sin servicio LAN).
+steps:
+- Abrir inventario en A y B
+- Vender en A
+- Medir el tiempo hasta que B muestra el stock nuevo
+expected:
+- B muestra el stock actualizado en ≤ 5 s
+comments: 'Bloqueado por la brecha B-01 del SDD: hoy no existe sincronización entre instancias.'

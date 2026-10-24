@@ -1,0 +1,54 @@
+# Metadatos del proyecto (nombre de archivos, testers, requisitos). Las fichas de TC viven en docs/testing/tc/ y los defectos en docs/testing/defectos/.
+# owners: reparto de módulos a usuarios de GitHub para asignar issues, p. ej.  productos: usuario1
+team: Team03
+project: Trapitos
+project_title: Mis Trapitos
+release: '7.0'
+milestone: Entrega SWQA - Test Plan
+department: QA - Equipo 3
+testers:
+- Tester 1
+- Tester 2
+- Tester 3
+planned_date: '2026-10-31'
+environment: Windows 10/11 o Ubuntu 22.04; Python 3.12; SQLite 3 (BD temporal por prueba, load_examples=False); pytest 8 +
+  pytest-cov; Tkinter con Xvfb en CI (GitHub Actions, ubuntu-latest).
+references: docs/SDD.md (§9 trazabilidad, §10 validación, §11 brechas); docs/SAD.md; tests/ en el repositorio
+requirements:
+- RF-01
+- RF-02
+- RF-03
+- RF-04
+- RF-05
+- RF-06
+- RF-07
+- RF-08
+- RF-09
+- RF-10
+- RF-11
+- RF-12
+- RF-13
+- RF-14
+- RF-15
+- RF-16
+- RF-17
+- RF-18
+- RF-19
+- RF-20
+- RF-21
+- RF-22
+- RF-23
+- RF-24
+- RF-25
+- RF-26
+- RNF-01
+other_ids:
+  SEG-01: 'Seguridad de acceso (brecha B-04 del SDD): autenticación, usuarios y roles'
+  GEN-01: Arranque y ciclo de vida de la aplicación (soporte, sin RF propio)
+levels:
+  UTS: Unitarias
+  ITS: Integración
+  STS: Sistema
+  ATS: Aceptación
+owners: {}
+personas: {A: "", B: "", C: ""}   # usuarios de GitHub de las 3 personas (sin @)

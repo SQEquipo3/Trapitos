@@ -1,0 +1,14 @@
+id: ATS_SEG_01
+level: ATS
+module: interfaz
+name: Permisos por rol de empleado (brecha B-04)
+reqs:
+- SEG-01
+objective: Un empleado con rol Vendedor no debe poder administrar empleados.
+pre: Usuarios Administrador y Vendedor.
+steps:
+- Entrar como Vendedor
+- Intentar abrir la gestión de empleados
+expected:
+- Acceso denegado
+comments: 'Brecha B-04: el rol aún no tiene autorización efectiva.'

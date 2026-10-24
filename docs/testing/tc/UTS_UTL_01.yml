@@ -1,0 +1,16 @@
+id: UTS_UTL_01
+level: UTS
+module: ventas
+name: Formato monetario
+reqs:
+- RF-06
+tests:
+- tests/test_inventario.py::test_dinero_formatea_y_tolera_basura
+objective: La función dinero() formatea importes y tolera valores no numéricos.
+pre: N/A
+steps:
+- dinero(1234.5)
+- dinero('abc')
+expected:
+- '''$1,234.50'''
+- '''$0.00'''

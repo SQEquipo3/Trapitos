@@ -1,0 +1,17 @@
+id: STS_DEV_02
+level: STS
+module: ventas
+name: Devoluciones y cancelaciones inválidas no alteran datos
+reqs:
+- RF-05
+tests:
+- tests/test_promociones_devoluciones.py::DevolucionesUITest::test_devoluciones_invalidas_no_alteran_datos_ni_notifican_inventario
+- tests/test_promociones_devoluciones.py::DevolucionesUITest::test_cancelaciones_invalidas_no_alteran_datos_ni_notifican_inventario
+objective: Operaciones inválidas no cambian datos ni disparan notificaciones al inventario.
+pre: Ventas registradas.
+steps:
+- Devolver cantidad inválida
+- Cancelar venta ya cancelada o inexistente
+expected:
+- Mensaje de error
+- Datos intactos y sin notificación

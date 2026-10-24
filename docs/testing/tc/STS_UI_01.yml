@@ -1,0 +1,15 @@
+id: STS_UI_01
+level: STS
+module: interfaz
+name: Nueve pantallas accesibles en dos tamaños y escalas
+reqs:
+- RF-06
+- RF-01
+tests:
+- tests/test_ui_layout.py::LayoutTest::test_nueve_pantallas_accesibles_en_dos_tamanos_y_escalas
+objective: Todas las pantallas se pueden abrir y sus controles son visibles en distintas resoluciones.
+pre: Aplicación completa.
+steps:
+- Recorrer las nueve pantallas en dos tamaños y escalas
+expected:
+- Sin controles recortados ni errores

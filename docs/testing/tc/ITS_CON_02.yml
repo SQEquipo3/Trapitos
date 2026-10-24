@@ -1,0 +1,20 @@
+id: ITS_CON_02
+level: ITS
+module: contactos
+name: Integridad referencial de clientes y proveedores
+reqs:
+- RF-13
+- RF-14
+tests:
+- tests/test_contactos.py::test_cliente_con_ventas_no_se_puede_eliminar
+- tests/test_contactos.py::test_alta_de_proveedor_y_lista
+- tests/test_contactos.py::test_proveedor_duplicado_o_con_productos_no_se_elimina
+objective: No se eliminan clientes con ventas ni proveedores con productos; no se duplican proveedores.
+pre: Cliente con venta; proveedor con producto.
+steps:
+- Eliminar cliente con ventas
+- Eliminar proveedor con productos
+- Crear proveedor duplicado
+expected:
+- IntegrityError en los tres casos
+- El alta válida aparece en la lista

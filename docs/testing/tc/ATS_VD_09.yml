@@ -1,0 +1,16 @@
+id: ATS_VD_09
+level: ATS
+module: ventas
+name: VD-09 Dos ventas simultáneas del último artículo
+reqs:
+- RNF-01
+- RF-04
+blocked_by: DEF-004
+objective: Solo una de dos ventas simultáneas del último artículo debe concretarse.
+pre: Producto con stock 1 y dos terminales.
+steps:
+- Capturar la venta en A y B
+- Confirmar casi al mismo tiempo
+expected:
+- Una venta se registra y la otra se rechaza por stock insuficiente
+comments: Requiere dos instancias (B-01).

@@ -1,0 +1,17 @@
+id: UTS_CON_01
+level: UTS
+module: contactos
+name: Unicidad de usuario de empleado y conservación de contraseña
+reqs:
+- SEG-01
+tests:
+- tests/test_contactos.py::test_usuario_de_empleado_es_unico
+- tests/test_contactos.py::test_empleado_no_cambia_password_si_viene_vacio
+objective: El username es único y editar un empleado sin password conserva el anterior.
+pre: BD temporal vacía.
+steps:
+- Crear dos empleados con el mismo usuario
+- Editar un empleado con password vacío y autenticar con la contraseña original
+expected:
+- El segundo alta levanta IntegrityError
+- La contraseña original sigue funcionando

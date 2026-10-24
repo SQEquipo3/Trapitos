@@ -1,0 +1,13 @@
+id: DEF-004
+tc: ATS_VD_08
+description: 'B-01: no existe servicio LAN ni sincronización entre instancias; no se puede validar RNF-01 entre
+  terminales'
+steps: '1. Abrir la aplicación en dos equipos
+
+  2. Vender en uno
+
+  3. El otro no recibe el cambio (no hay canal de sincronización)'
+severity: 1- High
+state: Open
+found_by: QA
+assigned_to: Desarrollo (arquitectura)

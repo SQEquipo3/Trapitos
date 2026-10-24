@@ -1,0 +1,18 @@
+id: STS_LOG_02
+level: STS
+module: interfaz
+name: 'Sesión: cerrar, reabrir y compartir conexión'
+reqs:
+- SEG-01
+tests:
+- tests/test_login.py::SessionTest
+objective: Cerrar sesión limpia el estado, conserva el inventario y libera la conexión.
+pre: Aplicación iniciada.
+steps:
+- Cerrar y reabrir sesión
+- Cerrar la aplicación
+- Verificar conexión y raíz compartidas
+expected:
+- Estado limpio e inventario intacto
+- Conexión liberada
+- Login y módulos comparten conexión

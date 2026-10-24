@@ -1,0 +1,18 @@
+id: ITS_INV_02
+level: ITS
+module: productos
+name: Ajustes de stock generan movimiento por la diferencia
+reqs:
+- RF-03
+- RF-05
+tests:
+- tests/test_inventario.py::test_edicion_de_stock_registra_ajuste_con_diferencia
+- tests/test_inventario.py::test_edicion_sin_cambio_de_stock_no_genera_movimiento
+objective: Editar stock registra AJUSTE ±diferencia; editar sin cambiar stock no genera movimiento.
+pre: Producto con stock 10.
+steps:
+- Editar stock a 14, luego a 11
+- Editar solo el precio
+expected:
+- Ajustes +4 y −3
+- No se agregan movimientos al cambiar solo el precio

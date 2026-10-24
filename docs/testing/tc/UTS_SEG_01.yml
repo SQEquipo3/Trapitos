@@ -1,0 +1,20 @@
+id: UTS_SEG_01
+level: UTS
+module: contactos
+name: Hash de contraseña y autenticación
+reqs:
+- SEG-01
+tests:
+- tests/test_inventario.py::test_hash_password_es_sha256_determinista
+- tests/test_inventario.py::test_autenticacion_valida_e_invalida
+objective: Verificar SHA-256 determinista y que authenticate solo acepta credenciales correctas.
+pre: Empleado 'vende' con contraseña 1234.
+steps:
+- Calcular hash dos veces
+- Autenticar con credenciales correctas
+- Con contraseña errónea
+- Con usuario inexistente
+expected:
+- Hash de 64 caracteres y estable
+- Credenciales correctas regresan el empleado
+- Las otras dos regresan None

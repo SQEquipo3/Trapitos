@@ -1,0 +1,18 @@
+id: ATS_VD_03
+level: ATS
+module: ventas
+name: VD-03 Día de venta con promoción y descuento general
+reqs:
+- RF-04
+- RF-06
+- RF-07
+- RF-08
+- RF-10
+tests:
+- tests/test_aceptacion.py::test_vd03_dia_de_venta_con_promocion_y_descuento_general
+objective: Venta real con promoción del 20 % y descuento general del 10 % pagada con tarjeta.
+pre: Producto de $1000, promoción 20 %, cliente registrado.
+steps:
+- Vender 2 piezas con 10 % de descuento general
+expected:
+- Subtotal 1600, descuento 160, total 1440; stock 8

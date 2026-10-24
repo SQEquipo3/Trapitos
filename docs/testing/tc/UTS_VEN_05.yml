@@ -1,0 +1,16 @@
+id: UTS_VEN_05
+level: UTS
+module: ventas
+name: Stock insuficiente rechaza la venta sin cambiar existencias
+reqs:
+- RF-04
+tests:
+- tests/test_ventas.py::test_stock_insuficiente_es_rechazado_y_no_cambia_stock
+objective: No se puede vender más de lo disponible.
+pre: Producto con stock 2.
+steps:
+- Intentar vender 3 piezas
+- Consultar el stock
+expected:
+- ValueError 'Stock insuficiente'
+- El stock sigue en 2
