@@ -1,6 +1,8 @@
 import tkinter as tk
 from tkinter import messagebox, ttk
 
+from mis_trapitos.data.repositories import devoluciones as devoluciones_repo
+from mis_trapitos.services import devoluciones as devoluciones_srv
 from mis_trapitos.ui.base import ActionBar, FormGrid, ScrollablePage, make_tree, tree_clear
 
 
@@ -47,7 +49,8 @@ class DevolucionesUI(ScrollablePage):
 
     def return_item_ui(self):
         try:
-            self.db.return_item(
+            devoluciones_srv.devolver(
+                self.db,
                 int(self.r_sale.get()),
                 int(self.r_product.get()),
                 int(self.r_quantity.get()),
@@ -62,8 +65,8 @@ class DevolucionesUI(ScrollablePage):
 
     def cancel_sale_ui(self):
         try:
-            self.db.cancel_sale(
-                int(self.cancel_sale_entry.get()), self.cancel_reason.get().strip()
+            devoluciones_srv.cancelar_venta(
+                self.db, int(self.cancel_sale_entry.get()), self.cancel_reason.get().strip()
             )
             self.refresh_returns()
             if self.on_inventario_actualizado is not None:
@@ -73,18 +76,11 @@ class DevolucionesUI(ScrollablePage):
             messagebox.showerror("Cancelacion", str(e))
 
     def refresh_returns(self):
-        rows = self.db.query(
-            "SELECT r.id, r.sale_id AS venta, p.name AS producto, r.quantity AS "
-            "cantidad, r.return_datetime AS fecha, r.reason AS motivo "
-            "FROM returns r JOIN products p ON p.id=r.product_id ORDER BY r.id DESC"
-        )
+        rows = devoluciones_repo.listar_devoluciones(self.db)
         tree_clear(self.returns_tree)
         for row in rows:
             self.returns_tree.insert("", tk.END, values=[row[key] for key in row.keys()])
-        rows = self.db.query(
-            "SELECT id, sale_id AS venta, cancel_datetime AS fecha, reason AS motivo "
-            "FROM cancellations ORDER BY id DESC"
-        )
+        rows = devoluciones_repo.listar_cancelaciones(self.db)
         tree_clear(self.cancellations_tree)
         for row in rows:
             self.cancellations_tree.insert("", tk.END, values=[row[key] for key in row.keys()])

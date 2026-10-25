@@ -3,8 +3,7 @@
 import tkinter as tk
 from tkinter import messagebox, ttk
 
-from utils import today_text
-from mis_trapitos.data.seed import date_offset
+from utils import date_offset, today_text
 from mis_trapitos.ui.base import ActionBar, FormGrid, ScrollablePage, make_tree, tree_clear, set_entries
 from mis_trapitos.data.repositories import promociones as promociones_repo
 from mis_trapitos.data.repositories import productos as productos_repo

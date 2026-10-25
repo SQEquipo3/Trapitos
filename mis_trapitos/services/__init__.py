@@ -1,1 +1,1 @@
-"""Reglas de negocio (se poblará en issues posteriores)."""
+"""Capa de servicios: reglas de negocio de ventas, devoluciones y cancelaciones."""

@@ -7,7 +7,7 @@ reqs:
 - RF-10
 tests:
 - tests/test_ventas.py::test_promocion_vencida_o_futura_no_se_aplica
-objective: active_promotion_percent solo considera promociones cuya vigencia incluye hoy.
+objective: promociones.porcentaje_vigente solo considera promociones cuya vigencia incluye hoy.
 pre: Producto con una promoción vencida (50 %) y otra futura (40 %).
 steps:
 - Consultar active_promotion_percent del producto

@@ -6,6 +6,10 @@ import pytest
 from mis_trapitos.data.repositories import productos
 from utils import dinero, hash_password, today_text
 from tests.conftest import stock
+from mis_trapitos.services import devoluciones as devoluciones_srv
+from mis_trapitos.services import ventas as ventas_srv
+from mis_trapitos.data.repositories import empleados as empleados_repo
+from mis_trapitos.data.repositories import proveedores as proveedores_repo
 
 
 def datos(code="BL-01", stock_=5, price=200, purchase=80, size="M", color="Azul", supplier=None):
@@ -56,9 +60,9 @@ def test_dinero_formatea_y_tolera_basura():
 
 
 def test_autenticacion_valida_e_invalida(db, empleado):
-    assert db.authenticate("vende", "1234") is not None
-    assert db.authenticate("vende", "mala") is None
-    assert db.authenticate("fantasma", "1234") is None
+    assert empleados_repo.autenticar(db, "vende", "1234") is not None
+    assert empleados_repo.autenticar(db, "vende", "mala") is None
+    assert empleados_repo.autenticar(db, "fantasma", "1234") is None
 
 
 # ---------- integración ----------
@@ -86,8 +90,8 @@ def test_edicion_sin_cambio_de_stock_no_genera_movimiento(db):
 def test_stock_es_suma_de_movimientos(db, empleado):
     """RNF-01: el stock visible siempre concilia con el kardex."""
     pid = productos.guardar(db, None, datos(stock_=10))
-    db.register_sale(None, empleado, "Efectivo", 0, [{"product_id": pid, "quantity": 4}])
-    db.return_item(1, pid, 1, "talla")
+    ventas_srv.registrar(db, None, empleado, "Efectivo", 0, [{"product_id": pid, "quantity": 4}])
+    devoluciones_srv.devolver(db, 1, pid, 1, "talla")
     productos.guardar(db, pid, datos(stock_=20))
     kardex = db.scalar("SELECT SUM(quantity) FROM inventory_movements WHERE product_id=?", (pid,))
     assert kardex == stock(db, pid) == 20
@@ -100,6 +104,6 @@ def test_producto_con_proveedor_inexistente_es_rechazado(db):
 
 
 def test_producto_con_proveedor_existente_se_lista_con_su_nombre(db):
-    sid = db.save_supplier(None, ("Textiles SA", "555", "Calle 1", "Blusas", today_text()))
+    sid = proveedores_repo.guardar(db, None, ("Textiles SA", "555", "Calle 1", "Blusas", today_text()))
     productos.guardar(db, None, datos(supplier=sid))
     assert productos.listar_inventario(db)[0]["proveedor"] == "Textiles SA"

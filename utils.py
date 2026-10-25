@@ -1,7 +1,7 @@
 """Funciones auxiliares reutilizables de la aplicación."""
 
 import hashlib
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from config import DATE_FMT, DATETIME_FMT
 
@@ -14,6 +14,11 @@ def now_text():
 def today_text():
     """Devuelve la fecha actual con el formato configurado."""
     return date.today().strftime(DATE_FMT)
+
+
+def date_offset(days):
+    """Fecha de hoy desplazada `days` días, con el formato configurado."""
+    return (date.today() + timedelta(days=days)).strftime(DATE_FMT)
 
 
 def dinero(value):
