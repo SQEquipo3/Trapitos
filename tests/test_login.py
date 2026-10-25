@@ -1,3 +1,4 @@
+import functools
 import importlib.util
 from pathlib import Path
 import runpy
@@ -11,6 +12,8 @@ from unittest.mock import Mock, patch
 from mis_trapitos.data.database import Database
 from mis_trapitos.ui import app as application
 from mis_trapitos.ui.login import Login
+from mis_trapitos.data.repositories import empleados as empleados_repo
+from mis_trapitos.data.repositories import productos as productos_repo
 
 
 def set_entry(entry, value):
@@ -25,7 +28,7 @@ class LoginTest(unittest.TestCase):
         with patch("mis_trapitos.data.database.seed_examples"):
             self.db = Database(str(Path(directory.name) / "login.db"))
         self.addCleanup(self.db.close)
-        self.employee_id = self.db.save_employee(
+        self.employee_id = empleados_repo.guardar(self.db, 
             None, "Administrador", "admin", "1234", "Administrador"
         )
         self.root = tk.Tk()
@@ -33,7 +36,7 @@ class LoginTest(unittest.TestCase):
         self.addCleanup(self.root.destroy)
         self.authenticated = Mock()
         self.login = Login(
-            self.root, authenticate=self.db.authenticate,
+            self.root, authenticate=functools.partial(empleados_repo.autenticar, self.db),
             on_authenticated=self.authenticated,
         )
         self.login.pack(fill="both", expand=True)
@@ -93,8 +96,8 @@ class SessionTest(unittest.TestCase):
         self.app.withdraw()
         self.addCleanup(self.close_app)
         self.db = self.app.db
-        self.db.save_employee(None, "Administrador", "admin", "1234", "Administrador")
-        self.db.save_employee(None, "Ventas", "ventas", "5678", "Ventas")
+        empleados_repo.guardar(self.db, None, "Administrador", "admin", "1234", "Administrador")
+        empleados_repo.guardar(self.db, None, "Ventas", "ventas", "5678", "Ventas")
 
     def close_app(self):
         if self.app is not None:
@@ -123,7 +126,7 @@ class SessionTest(unittest.TestCase):
 
     def test_cerrar_y_reabrir_sesion_limpia_estado_y_conserva_inventario(self):
         self.login()
-        product_id = self.db.save_product(None, (
+        product_id = productos_repo.guardar(self.db, None, (
             "PRUEBA-M", "Blusa", "Ropa", "M", "Azul", 80, 150, 10,
             None, "2026-10-07", "Marca", "Otono", "",
         ))

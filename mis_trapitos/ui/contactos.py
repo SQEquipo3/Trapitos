@@ -2,8 +2,8 @@
 
 Agrupa Clientes, Proveedores y Empleados en un solo módulo, siguiendo el
 mismo patrón que ui_productos.py: recibe la base de datos ya abierta por
-la aplicación y no crea conexiones ni importa el punto de entrada. Las
-transacciones siguen a cargo de Database.
+la aplicación y no crea conexiones ni importa el punto de entrada. Los
+datos se leen y guardan con los repositorios.
 """
 
 import urllib.parse
@@ -16,14 +16,6 @@ from mis_trapitos.ui.base import ActionBar, FormGrid, ScrollablePage, make_tree
 from mis_trapitos.data.repositories import clientes as clientes_repo
 from mis_trapitos.data.repositories import proveedores as proveedores_repo
 from mis_trapitos.data.repositories import empleados as empleados_repo
-
-
-
-def dinero(value):
-    try:
-        return f"${float(value):,.2f}"
-    except Exception:
-        return "$0.00"
 
 
 class ContactosUI(ttk.Frame):

@@ -5,7 +5,6 @@
   que ``tools/generar_documentos.py`` cruza con ``docs/testing/tc/*.yml``.
 """
 import json
-import os
 import sys
 from datetime import date, timedelta
 from pathlib import Path
@@ -17,6 +16,8 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from mis_trapitos.data.database import Database  # noqa: E402
+from mis_trapitos.data.repositories import empleados as empleados_repo  # noqa: E402
+from mis_trapitos.data.repositories import productos as productos_repo  # noqa: E402
 from utils import today_text  # noqa: E402
 
 _RESULTS = {}
@@ -31,7 +32,7 @@ def db(tmp_path):
 
 @pytest.fixture
 def empleado(db):
-    return db.save_employee(None, "Vendedora Prueba", "vende", "1234", "Vendedor")
+    return empleados_repo.guardar(db, None, "Vendedora Prueba", "vende", "1234", "Vendedor")
 
 
 @pytest.fixture
@@ -42,7 +43,7 @@ def make_product(db):
               purchase=80, price=200, stock=10, supplier_id=None):
         counter["n"] += 1
         code = code or f"P-{counter['n']:03d}"
-        return db.save_product(None, (code, name, category, size, color, purchase, price,
+        return productos_repo.guardar(db, None, (code, name, category, size, color, purchase, price,
                                       stock, supplier_id, today_text(), "Marca", "Todo", ""))
     return _make
 

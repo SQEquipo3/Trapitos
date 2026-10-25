@@ -10,6 +10,8 @@ from utils import today_text
 from tests.conftest import dias, stock
 from mis_trapitos.services import devoluciones as devoluciones_srv
 from mis_trapitos.services import ventas as ventas_srv
+from mis_trapitos.data.repositories import promociones as promociones_repo
+from mis_trapitos.data.repositories import reportes as reportes_repo
 
 
 def item(pid, qty):
@@ -98,7 +100,7 @@ def test_venta_se_revierte_si_falla_una_escritura(db, empleado, make_product):
 
 def test_promocion_vigente_se_aplica_automaticamente(db, empleado, make_product):
     pid = make_product(price=200)
-    db.save_promotion(None, pid, 25, dias(-1)[:10], dias(5)[:10])
+    promociones_repo.guardar(db, None, pid, 25, dias(-1)[:10], dias(5)[:10])
     _, subtotal, *_ = ventas_srv.registrar(db, None, empleado, "Efectivo", 0, [item(pid, 2)])
     assert subtotal == 300
     assert db.scalar("SELECT promo_discount_percent FROM sale_items") == 25
@@ -106,23 +108,23 @@ def test_promocion_vigente_se_aplica_automaticamente(db, empleado, make_product)
 
 def test_promocion_vencida_o_futura_no_se_aplica(db, empleado, make_product):
     pid = make_product(price=200)
-    db.save_promotion(None, pid, 50, dias(-10)[:10], dias(-2)[:10])
-    db.save_promotion(None, pid, 40, dias(3)[:10], dias(9)[:10])
-    assert db.active_promotion_percent(pid) == 0
+    promociones_repo.guardar(db, None, pid, 50, dias(-10)[:10], dias(-2)[:10])
+    promociones_repo.guardar(db, None, pid, 40, dias(3)[:10], dias(9)[:10])
+    assert promociones_repo.porcentaje_vigente(db, pid) == 0
 
 
 def test_con_varias_promociones_vigentes_aplica_la_mayor(db, make_product):
     pid = make_product()
-    db.save_promotion(None, pid, 10, dias(-1)[:10], dias(5)[:10])
-    db.save_promotion(None, pid, 30, dias(-1)[:10], dias(5)[:10])
-    assert db.active_promotion_percent(pid) == 30
+    promociones_repo.guardar(db, None, pid, 10, dias(-1)[:10], dias(5)[:10])
+    promociones_repo.guardar(db, None, pid, 30, dias(-1)[:10], dias(5)[:10])
+    assert promociones_repo.porcentaje_vigente(db, pid) == 30
 
 
 def test_promocion_con_porcentaje_invalido_es_rechazada(db, make_product):
     import sqlite3
     pid = make_product()
     with pytest.raises(sqlite3.IntegrityError):
-        db.save_promotion(None, pid, 120, dias(0)[:10], dias(5)[:10])
+        promociones_repo.guardar(db, None, pid, 120, dias(0)[:10], dias(5)[:10])
 
 
 def test_devolucion_parcial_repone_stock_y_registra_movimiento(db, empleado, make_product):
@@ -199,5 +201,5 @@ def test_reporte_ventas_por_producto_descuenta_devoluciones(db, empleado, make_p
     pid = make_product(price=100, stock=10)
     sid, *_ = ventas_srv.registrar(db, None, empleado, "Efectivo", 0, [item(pid, 4)])
     devoluciones_srv.devolver(db, sid, pid, 4, "x")
-    fila = db.report("Ventas por producto")
+    fila = reportes_repo.ejecutar(db, "Ventas por producto")
     assert not fila or fila[0]["piezas"] == 0

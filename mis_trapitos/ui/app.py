@@ -1,15 +1,13 @@
 """ Interfaz y orquestador"""
 
-import csv
+import functools
 import tkinter as tk
-from tkinter import filedialog, messagebox, ttk
+from tkinter import ttk
 
-from config import APP_TITLE, APP_VERSION, DB_NAME, PAYMENT_METHODS
+from config import APP_TITLE, APP_VERSION, DB_NAME
 from mis_trapitos.data.database import Database
-from mis_trapitos.ui.base import (
-    ActionBar, FormGrid, ScrollablePage, configure_tree_columns,
-    handle_page_event, make_tree,
-)
+from mis_trapitos.data.repositories import empleados as empleados_repo
+from mis_trapitos.ui.base import handle_page_event
 from mis_trapitos.ui.contactos import ContactosUI
 from mis_trapitos.ui.devoluciones import DevolucionesUI
 from mis_trapitos.ui.login import Login
@@ -19,76 +17,6 @@ from mis_trapitos.ui.ventas import VentasUI
 from mis_trapitos.ui.styles import UI_COLORS, configure_styles
 from mis_trapitos.ui.reportes import ReportesUI
 from mis_trapitos.ui.rastreabilidad import RastreabilidadUI
-
-
-CONFIG_ITEMS = [
-    ("CI-01", "Codigo fuente principal", "main.py", "Controlado"),
-    ("CI-02", "Base de datos local", "mis_trapitos.db", "Controlado"),
-    ("CI-03", "Version de aplicacion", APP_VERSION, "Controlado"),
-    ("CI-04", "Operacion sin Internet", "SQLite local y Tkinter", "Controlado"),
-    ("CI-05", "Usuario inicial", "admin / 1234", "Controlado"),
-    ("CI-06", "Modulo de productos", "mis_trapitos/ui/productos.py", "Controlado"),
-    ("CI-07", "Modulo de contactos y usuarios", "mis_trapitos/ui/contactos.py", "Controlado"),
-    ("CI-08", "Modulo de ventas", "mis_trapitos/ui/ventas.py", "Controlado"),
-]
-
-TRACEABILITY = [
-    ("RF-01", "Registrar productos con categoria, descripcion, precio, talla y color", "Productos",
-"Guardar producto y verificar en inventario"),
-    ("RF-02", "Manejar variaciones de talla y color con existencias", "Productos", "Registrar mismo producto con otra talla o color"),
-    ("RF-03", "Agregar productos y actualizar cantidades de inventario", "Productos", "Modificar stock y revisar movimiento"),
-    ("RF-04", "Actualizar inventario automaticamente al registrar venta", "Ventas", "Vender producto y comprobar disminucion"),
-    ("RF-05", "Registrar movimientos de inventario", "Inventario", "Consultar movimientos de entrada, salida, ajuste, devolucion y cancelacion"),
-    ("RF-06", "Registrar ventas con productos, cantidades y metodo de pago", "Ventas", "Registrar venta con carrito"),
-    ("RF-07", "Registrar pagos en efectivo, tarjeta y transferencia", "Ventas", "Seleccionar metodo de pago"),
-    ("RF-08", "Aplicar descuentos a ventas", "Ventas", "Capturar descuento general"),
-    ("RF-09", "Registrar promociones con porcentaje y duracion", "Promociones", "Crear promocion vigente"),
-    ("RF-10", "Aplicar descuentos automaticos segun condiciones", "Promociones y Ventas", "Venta aplica promocion vigente"),
-    ("RF-11", "Registrar clientes con nombre, direccion, correo y telefono", "Clientes", "Guardar cliente"),
-    ("RF-12", "Almacenar y consultar historial de compras de cada cliente", "Clientes y Reportes", "Consultar historial"),
-    ("RF-13", "Registrar proveedores e informacion de contacto", "Proveedores", "Guardar proveedor"),
-    ("RF-14", "Relacionar proveedor con productos que suministra", "Productos y Proveedores", "Consultar productos por proveedor"),
-    ("RF-15", "Consultar productos disponibles e inventario por categoria", "Reportes", "Reporte por categoria"),
-    ("RF-16", "Consultar productos en oferta y descuentos", "Reportes", "Reporte de productos en oferta"),
-    ("RF-17", "Consultar metodos de pago mas utilizados", "Reportes", "Reporte de metodos de pago"),
-    ("RF-18", "Consultar productos mas vendidos en el ultimo mes", "Reportes", "Reporte mensual"),
-    ("RF-19", "Consultar ventas realizadas en los ultimos tres dias", "Reportes", "Reporte de ultimos tres dias"),
-    ("RF-20", "Consultar productos de un proveedor especifico", "Reportes", "Parametro de proveedor"),
-    ("RF-21", "Consultar productos comprados mas de una vez por un cliente", "Reportes", "Parametro de cliente"),
-    ("RF-22", "Consultar productos vendidos por categoria en el ultimo mes", "Reportes", "Parametro de categoria"),
-    ("RF-23", "Consultar productos con precio superior a cierto valor y existencias", "Reportes", "Parametro de precio"),
-    ("RF-24", "Consultar producto con mayor descuento vigente", "Reportes", "Promociones vigentes"),
-    ("RF-25", "Consultar compras por ciudad o region del cliente", "Reportes", "Agrupar por region"),
-    ("RF-26", "Consultar productos no vendidos en los ultimos tres meses", "Reportes", "Reporte sin ventas recientes"),
-    ("RNF-01", "Reflejar en tiempo real la disminucion del inventario", "Ventas e Inventario", "Validar stock inmediatamente despues de vender"),
-]
-
-REPORTS = [
-    "Inventario general actualizado",
-    "Productos con stock bajo",
-    "Ventas diarias, semanales y mensuales",
-    "Ventas por producto",
-    "Ventas por metodo de pago",
-    "Ventas por empleado",
-    "Productos mas vendidos",
-    "Productos menos vendidos",
-    "Entradas de mercancia",
-    "Clientes frecuentes",
-    "Resumen de utilidades",
-    "Productos devueltos o cancelados",
-    "Productos disponibles por categoria",
-    "Productos en oferta",
-    "Metodos de pago mas utilizados",
-    "Productos mas vendidos ultimo mes",
-    "Ventas ultimos tres dias",
-    "Productos de proveedor especifico",
-    "Productos comprados mas de una vez por cliente",
-    "Productos vendidos por categoria ultimo mes",
-    "Productos con precio superior y existencias",
-    "Producto con mayor descuento vigente",
-    "Compras por ciudad o region",
-    "Productos no vendidos ultimos tres meses",
-]
 
 
 class App(tk.Tk):
@@ -139,7 +67,7 @@ class App(tk.Tk):
         self.user = None
         self.login_view = Login(
             self,
-            authenticate=self.db.authenticate,
+            authenticate=functools.partial(empleados_repo.autenticar, self.db),
             on_authenticated=self._on_authenticated,
         )
         self.login_view.pack(expand=True)

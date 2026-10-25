@@ -25,7 +25,8 @@ def devolver(db, sale_id, product_id, quantity, reason):
     with db.transaction():
         devoluciones_repo.insertar_devolucion(db, sale_id, product_id, quantity, now_text(), reason)
         productos_repo.ajustar_stock(db, product_id, quantity)
-        db.register_movement(product_id, "DEVOLUCION", quantity, reason or "Devolucion", sale_id)
+        productos_repo.registrar_movimiento(db, product_id, "DEVOLUCION", quantity,
+                                            reason or "Devolucion", sale_id)
 
 
 def cancelar_venta(db, sale_id, reason):
@@ -42,7 +43,7 @@ def cancelar_venta(db, sale_id, reason):
             restore_qty = max(0, int(item["quantity"]) - int(returned_qty))
             if restore_qty > 0:
                 productos_repo.ajustar_stock(db, item["product_id"], restore_qty)
-                db.register_movement(item["product_id"], "CANCELACION", restore_qty,
-                                     reason or "Cancelacion", sale_id)
+                productos_repo.registrar_movimiento(db, item["product_id"], "CANCELACION", restore_qty,
+                                                    reason or "Cancelacion", sale_id)
         ventas_repo.marcar_cancelada(db, sale_id)
         devoluciones_repo.insertar_cancelacion(db, sale_id, now_text(), reason or "Cancelacion")

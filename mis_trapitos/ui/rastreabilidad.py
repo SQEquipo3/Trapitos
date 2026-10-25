@@ -4,19 +4,18 @@ import tkinter as tk
 
 from tkinter import messagebox, ttk
 
-from config import PAYMENT_METHODS
-
 from mis_trapitos.ui.base import (
     ActionBar,
     ScrollablePage,
     make_tree,
 )
 
+from mis_trapitos.data.repositories import clientes as clientes_repo
+from mis_trapitos.data.repositories import empleados as empleados_repo
+from mis_trapitos.data.repositories import productos as productos_repo
 from mis_trapitos.services.ventas import ServicioVentas
-from config import APP_TITLE, APP_VERSION, DB_NAME, PAYMENT_METHODS
+from config import APP_VERSION, PAYMENT_METHODS
 
-# PEGA AQUÍ CONFIG_ITEMS Y TRACEABILITY
-# CON SU CONTENIDO ORIGINAL DE app.py.
 CONFIG_ITEMS = [
     ("CI-01", "Codigo fuente principal", "main.py", "Controlado"),
     ("CI-02", "Base de datos local", "mis_trapitos.db", "Controlado"),
@@ -57,7 +56,7 @@ TRACEABILITY = [
     ("RF-25", "Consultar compras por ciudad o region del cliente", "Reportes", "Agrupar por region"),
     ("RF-26", "Consultar productos no vendidos en los ultimos tres meses", "Reportes", "Reporte sin ventas recientes"),
     ("RNF-01", "Reflejar en tiempo real la disminucion del inventario", "Ventas e Inventario", "Validar stock inmediatamente despues de vender"),
-] 
+]
 
 class RastreabilidadUI(ScrollablePage):
 
@@ -113,15 +112,9 @@ class RastreabilidadUI(ScrollablePage):
 
     def run_basic_tests(self):
         try:
-            product = self.db.one(
-                "SELECT * FROM products ORDER BY stock DESC LIMIT 1"
-            )
-            employee = self.db.one(
-                "SELECT * FROM employees ORDER BY id LIMIT 1"
-            )
-            customer = self.db.one(
-                "SELECT * FROM customers ORDER BY id LIMIT 1"
-            )
+            product = productos_repo.con_mas_stock(self.db)
+            employee = empleados_repo.primero(self.db)
+            customer = clientes_repo.primero(self.db)
 
             if not product or not employee:
                 raise ValueError(
@@ -145,20 +138,9 @@ class RastreabilidadUI(ScrollablePage):
                 0
             ).sale_id
 
-            after = self.db.scalar(
-                "SELECT stock FROM products WHERE id=?",
-                (product["id"],)
-            )
+            after = int(productos_repo.obtener_por_id(self.db, product["id"])["stock"])
 
-            movement = self.db.one(
-                """
-                SELECT id
-                FROM inventory_movements
-                WHERE related_sale_id=?
-                  AND movement_type='SALIDA'
-                """,
-                (sale_id,)
-            )
+            movement = productos_repo.movimiento_de_venta(self.db, sale_id, "SALIDA")
 
             if after != initial_stock - 1 or not movement:
                 raise ValueError(

@@ -1,7 +1,7 @@
 """Interfaz modular de productos, variantes e inventario de Mis Trapitos.
 
 Recibe la base de datos abierta por la aplicación. No crea conexiones ni
-importa el punto de entrada; las transacciones siguen a cargo de Database.
+importa el punto de entrada; los datos se leen y guardan con los repositorios.
 """
 
 import csv
@@ -12,6 +12,8 @@ from tkinter import filedialog, messagebox, ttk
 
 from PIL import Image, ImageOps, ImageTk
 
+from mis_trapitos.data.repositories import productos as productos_repo
+from mis_trapitos.data.repositories import reportes as reportes_repo
 from mis_trapitos.ui.base import ActionBar, FormGrid, ScrollablePage, make_tree
 
 
@@ -202,7 +204,7 @@ class ProductosUI(ScrollablePage):
             raise ValueError("Codigo, nombre, categoria, talla y color son obligatorios.")
         if data[5] < 0 or data[6] < 0 or data[7] < 0:
             raise ValueError("Precios y stock no pueden ser negativos.")
-        if data[8] is not None and not self.db.one("SELECT id FROM suppliers WHERE id=?", (data[8],)):
+        if data[8] is not None and not productos_repo.proveedor_existe(self.db, data[8]):
             raise ValueError(
                 "El proveedor indicado no existe. Selecciona un ID de proveedor registrado o deja el campo vacio."
             )
@@ -211,7 +213,7 @@ class ProductosUI(ScrollablePage):
     def add_product_ui(self):
         try:
             data = self.collect_product_data()
-            self.selected_product_id = self.db.save_product(None, data)
+            self.selected_product_id = productos_repo.guardar(self.db, None, data)
             self.actualizar_inventario()
             self.products_tree.selection_set(str(self.selected_product_id))
             self.display_image(data[12])
@@ -224,7 +226,7 @@ class ProductosUI(ScrollablePage):
             if not self.selected_product_id:
                 raise ValueError("Selecciona un producto de la tabla antes de editarlo.")
             data = self.collect_product_data()
-            self.db.save_product(self.selected_product_id, data)
+            productos_repo.guardar(self.db, self.selected_product_id, data)
             self.actualizar_inventario()
             self.display_image(data[12])
             messagebox.showinfo("Productos", "Producto editado correctamente.", parent=self)
@@ -243,13 +245,7 @@ class ProductosUI(ScrollablePage):
         App llama este método después de ventas, devoluciones y cancelaciones.
         Solo se sustituye el stock del formulario si cambió en la base de datos.
         """
-        rows = self.db.query(
-            """SELECT p.id, p.code AS codigo, p.name AS producto, p.category AS categoria,
-                      p.size AS talla, p.color, p.stock, p.sale_price AS precio,
-                      COALESCE(s.name,'') AS proveedor
-               FROM products p LEFT JOIN suppliers s ON s.id=p.supplier_id
-               ORDER BY p.id DESC"""
-        )
+        rows = productos_repo.listar_inventario(self.db)
         stale_items = set(self.products_tree.get_children())
         selected_stock = None
         for index, row in enumerate(rows):
@@ -278,7 +274,7 @@ class ProductosUI(ScrollablePage):
         if not selection:
             return
         product_id = self.products_tree.item(selection[0], "values")[0]
-        row = self.db.one("SELECT * FROM products WHERE id=?", (product_id,))
+        row = productos_repo.obtener_por_id(self.db, product_id)
         if not row:
             return
         self.selected_product_id = row["id"]
@@ -316,7 +312,7 @@ class ProductosUI(ScrollablePage):
         )
         if not path:
             return
-        rows = self.db.report("Inventario general actualizado")
+        rows = reportes_repo.ejecutar(self.db, "Inventario general actualizado")
         with open(path, "w", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
             if rows:

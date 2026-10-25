@@ -10,6 +10,7 @@ from config import PAYMENT_METHODS
 from utils import now_text
 from mis_trapitos.data.repositories import clientes as clientes_repo
 from mis_trapitos.data.repositories import productos as productos_repo
+from mis_trapitos.data.repositories import promociones as promociones_repo
 from mis_trapitos.data.repositories import ventas as ventas_repo
 
 
@@ -59,7 +60,7 @@ def registrar(db, customer_id, employee_id, metodo_pago, descuento, cart):
                 raise ValueError("La cantidad debe ser mayor a cero.")
             if int(product["stock"]) < qty:
                 raise ValueError(f"Stock insuficiente para {product['code']} - {product['name']}.")
-            promo = db.active_promotion_percent(product_id)
+            promo = promociones_repo.porcentaje_vigente(db, product_id)
             unit_price = float(product["sale_price"])
             line_total = unit_price * qty * (1 - promo / 100)
             subtotal += line_total
@@ -71,7 +72,7 @@ def registrar(db, customer_id, employee_id, metodo_pago, descuento, cart):
         for product_id, qty, unit_price, promo, line_total in prepared:
             ventas_repo.insertar_partida(db, sale_id, product_id, qty, unit_price, promo, line_total)
             productos_repo.ajustar_stock(db, product_id, -qty)
-            db.register_movement(product_id, "SALIDA", -qty, "Venta registrada", sale_id)
+            productos_repo.registrar_movimiento(db, product_id, "SALIDA", -qty, "Venta registrada", sale_id)
         return sale_id, subtotal, monto, total
 
 
@@ -117,7 +118,7 @@ class ServicioVentas:
             product = productos_repo.obtener_por_id(self.db, item["product_id"])
             if not product:
                 continue
-            promo = self.db.active_promotion_percent(product["id"])
+            promo = promociones_repo.porcentaje_vigente(self.db, product["id"])
             qty = int(item["quantity"])
             line = float(product["sale_price"]) * qty * (1 - promo / 100)
             rows.append({

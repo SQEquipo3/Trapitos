@@ -1,16 +1,14 @@
 """Datos de demostración opcionales para Mis trapitos."""
 
 import os
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 from PIL import Image, ImageDraw
 
-from config import DATE_FMT, DATETIME_FMT, PAYMENT_METHODS
-from utils import hash_password, now_text
+from config import DATETIME_FMT, PAYMENT_METHODS
+from utils import date_offset, hash_password, now_text
+from mis_trapitos.data.repositories import productos as productos_repo
 from mis_trapitos.services import devoluciones as devoluciones_srv
 from mis_trapitos.services import ventas as ventas_srv
-
-def date_offset(days):
-    return (date.today() + timedelta(days=days)).strftime(DATE_FMT)
 
 def create_sample_images(db):
     from mis_trapitos.ui.productos import IMAGE_DIR
@@ -118,7 +116,7 @@ supplier_ids.get("Ropa Norte"), date_offset(-7), "Abrigo MX", "Invierno", ""),
             cur = db.execute("""INSERT INTO products(code, name, category, size, color,
 purchase_price, sale_price, stock, supplier_id, entry_date, brand, season, image_path, created_at)
 VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)"""         , (*row, now_text()))
-            db.register_movement(cur.lastrowid, "ENTRADA", row[7], "Alta inicial de ejemplo"                        ,
+            productos_repo.registrar_movimiento(db, cur.lastrowid, "ENTRADA", row[7], "Alta inicial de ejemplo"                        ,
 None)
         else:
             default_image_names = ("camisa_roja.jpg", "pantalon_azul.jpg", "vestido_negro.jpg",

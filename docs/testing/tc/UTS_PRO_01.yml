@@ -7,7 +7,7 @@ reqs:
 tests:
 - tests/test_inventario.py::test_alta_producto_guarda_datos
 - tests/test_inventario.py::test_buscar_producto_por_codigo_y_producto_inexistente
-objective: Verificar que save_product persiste todos los campos del producto y que se puede recuperar por código;
+objective: Verificar que productos.guardar persiste todos los campos del producto y que se puede recuperar por código;
   un código inexistente regresa None.
 pre: BD SQLite temporal vacía.
 steps:
