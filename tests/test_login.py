@@ -14,6 +14,7 @@ from mis_trapitos.ui import app as application
 from mis_trapitos.ui.login import Login
 from mis_trapitos.data.repositories import empleados as empleados_repo
 from mis_trapitos.data.repositories import productos as productos_repo
+from tests.tc import tc
 
 
 def set_entry(entry, value):
@@ -21,7 +22,22 @@ def set_entry(entry, value):
     entry.insert(0, value)
 
 
+@tc("STS_LOG_01", nivel="STS", modulo="interfaz", reqs=["SEG-01"],
+    nombre="Inicio de sesión: credenciales válidas, inválidas y Enter")
 class LoginTest(unittest.TestCase):
+    """La ventana de login autentica una sola vez, rechaza credenciales inválidas y entrega el
+    usuario.
+
+    Precondiciones: Aplicación Tkinter sobre BD temporal.
+    Pasos:
+    - Capturar credenciales válidas y pulsar Entrar
+    - Capturar inválidas
+    - Pulsar Enter en contraseña
+    Esperado:
+    - Se entrega el usuario autenticado
+    - Permanece en login
+    - Autentica exactamente una vez
+    """
     def setUp(self):
         directory = tempfile.TemporaryDirectory(prefix="trapitos-login-")
         self.addCleanup(directory.cleanup)
@@ -86,7 +102,21 @@ class LoginTest(unittest.TestCase):
         self.error.assert_not_called()
 
 
+@tc("STS_LOG_02", nivel="STS", modulo="interfaz", reqs=["SEG-01"],
+    nombre="Sesión: cerrar, reabrir y compartir conexión")
 class SessionTest(unittest.TestCase):
+    """Cerrar sesión limpia el estado, conserva el inventario y libera la conexión.
+
+    Precondiciones: Aplicación iniciada.
+    Pasos:
+    - Cerrar y reabrir sesión
+    - Cerrar la aplicación
+    - Verificar conexión y raíz compartidas
+    Esperado:
+    - Estado limpio e inventario intacto
+    - Conexión liberada
+    - Login y módulos comparten conexión
+    """
     def setUp(self):
         directory = tempfile.TemporaryDirectory(prefix="trapitos-session-")
         self.addCleanup(directory.cleanup)
@@ -169,7 +199,19 @@ class SessionTest(unittest.TestCase):
             self.db.scalar("SELECT 1")
 
 
+@tc("STS_LOG_03", nivel="STS", modulo="interfaz", reqs=["GEN-01"],
+    nombre="Arranque de la aplicación (main)")
 class StartupTest(unittest.TestCase):
+    """Importar main no abre ventana; ejecutarlo abre una sola aplicación y un bucle.
+
+    Precondiciones: N/A
+    Pasos:
+    - Importar main
+    - Ejecutar main()
+    Esperado:
+    - Sin ventana ni conexión al importar
+    - Una aplicación y un mainloop
+    """
     def setUp(self):
         self.path = Path(__file__).resolve().parents[1] / "main.py"
 

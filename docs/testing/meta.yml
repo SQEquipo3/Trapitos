@@ -1,6 +1,9 @@
-# Metadatos del proyecto (nombre de archivos, testers, requisitos). Las fichas de TC viven en docs/testing/tc/ y los defectos en docs/testing/defectos/.
+# Metadatos del proyecto (nombre de archivos, testers, requisitos).
+# Los TC automatizados viven en tests/ (decorador @tc), los manuales en docs/testing/manuales.yml
+# y los bugs son issues de GitHub con label «bug» (plantilla «Defecto»).
 # owners: reparto de módulos a usuarios de GitHub para asignar issues, p. ej.  productos: usuario1
 team: Team03
+repo: SQEquipo3/Trapitos
 project: Trapitos
 project_title: Mis Trapitos
 release: '7.0'
@@ -45,10 +48,19 @@ requirements:
 other_ids:
   SEG-01: 'Seguridad de acceso (brecha B-04 del SDD): autenticación, usuarios y roles'
   GEN-01: Arranque y ciclo de vida de la aplicación (soporte, sin RF propio)
+  ISO-8601: 'Estándar ISO 8601: formato de fechas y horas'
+  RFC-4180: 'Estándar RFC 4180: formato de archivos CSV'
+  FIPS-180-4: 'Estándar FIPS 180-4: función hash SHA-256'
+  SQL-FK: 'Integridad referencial e integridad de la base SQLite'
+  SDD-CONTRATOS: 'Contratos de operaciones definidos en el SDD (§3.3) y tipos de movimiento de inventario'
 levels:
   UTS: Unitarias
   ITS: Integración
   STS: Sistema
   ATS: Aceptación
+  CTS: Conformidad
 owners: {}
 personas: {A: "", B: "", C: ""}   # usuarios de GitHub de las 3 personas (sin @)
+# Nombre real de cada usuario de GitHub, para «Found by» y «Assigned to» del Bug report.
+# Ejemplo:  usuario_github: Nombre Apellido
+nombres: {}

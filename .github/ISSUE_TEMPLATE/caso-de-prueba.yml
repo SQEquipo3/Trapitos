@@ -7,13 +7,13 @@ body:
     id: tc_id
     attributes:
       label: ID del TC
-      description: "Formato NIVEL_MODULO_NN, p. ej. UTS_VEN_01 (UTS unitaria, ITS integración, STS sistema, ATS aceptación)"
+      description: "Formato NIVEL_MODULO_NN, p. ej. UTS_VEN_01 (UTS unitaria, ITS integración, STS sistema, ATS aceptación, CTS conformidad)"
     validations: {required: true}
   - type: dropdown
     id: nivel
     attributes:
       label: Nivel de prueba
-      options: [Unitaria, Integración, Sistema, Aceptación]
+      options: [Unitaria, Integración, Sistema, Aceptación, Conformidad]
     validations: {required: true}
   - type: dropdown
     id: modulo
@@ -44,7 +44,6 @@ body:
     attributes:
       label: Definición de terminado
       options:
-        - label: "Ficha creada en docs/testing/tc/<ID>.yml"
-        - label: "Prueba escrita en tests/ (o TC manual ejecutado con manual_result)"
+        - label: "Prueba escrita en tests/ con @tc y su docstring (o TC manual en docs/testing/manuales.yml con manual_result)"
         - label: "pytest pasa en el PR (tests.yml en verde)"
         - label: "El PR dice «Closes #N»"

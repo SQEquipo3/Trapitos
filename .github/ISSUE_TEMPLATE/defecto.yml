@@ -1,11 +1,16 @@
 name: Defecto (bug)
-description: Defecto encontrado por una prueba. Alimenta la hoja «Bug report».
+description: Defecto encontrado por una prueba. Aparece solo en la hoja «Bug report» del Test Report.
 title: "[DEF] <resumen>"
-labels: ["defect"]
+labels: ["bug"]
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Quien abre el issue queda como «Found by» y el assignee como «Assigned to». Al cerrarlo, el Bug report lo marca Closed.
+        Si el bug tiene una prueba que falla a propósito, márquela con `@pytest.mark.xfail(strict=True, reason="#<número>: ...")`.
   - type: input
     id: tc
-    attributes: {label: TC que lo detectó, description: "p. ej. ITS_VEN_08"}
+    attributes: {label: TC que lo detectó, description: "ID del caso de prueba, p. ej. ITS_VEN_08"}
     validations: {required: true}
   - type: textarea
     id: pasos
