@@ -52,6 +52,14 @@ def test_no_hay_pruebas_huerfanas():
     assert not huerfanas, "Agrega @tc a: " + ", ".join(huerfanas)
 
 
+def test_revisiones_del_equipo_validas():
+    """La hoja intro tiene 5 renglones para revisiones; cada una lleva fecha, quién y descripción."""
+    revisiones = CAT["meta"].get("revisiones") or []
+    assert len(revisiones) <= 5
+    for r in revisiones:
+        assert r.get("fecha") and r.get("quien") and r.get("descripcion"), r
+
+
 def test_tc_manuales_completos():
     for c in MANUALES:
         assert c.get("manual_result") in (None, "PASSED", "FAILED"), c["id"]

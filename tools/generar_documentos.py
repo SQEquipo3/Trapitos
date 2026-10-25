@@ -429,6 +429,12 @@ def construir_plan(cat, k, fecha, out: Path, tpl: Path):
         c.value = v
         c.alignment = Alignment(wrap_text=True, vertical="top")
     wi.row_dimensions[14].height = 52
+    for fila, rev in enumerate(meta.get("revisiones") or [], start=15):   # revisión y aprobación en equipo
+        for col, v in (("C", str(rev["fecha"])), ("D", rev["quien"]), ("E", rev["descripcion"])):
+            c = wi[f"{col}{fila}"]
+            c.value = v
+            c.alignment = Alignment(wrap_text=True, vertical="top")
+        wi.row_dimensions[fila].height = 30
     wi["B6"].value = f"Proyecto: {meta['project_title']} (versión {meta['release']})"
     # ---- Matrix
     wm = wb["Matrix"]

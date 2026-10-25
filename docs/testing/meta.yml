@@ -63,4 +63,10 @@ owners: {}
 personas: {A: "", B: "", C: ""}   # usuarios de GitHub de las 3 personas (sin @)
 # Nombre real de cada usuario de GitHub, para «Found by» y «Assigned to» del Bug report.
 # Ejemplo:  usuario_github: Nombre Apellido
-nombres: {}
+nombres:
+  Blises: Elizabeth Barajas
+# Revisión y aprobación en equipo: una línea por integrante en la hoja «intro» (máximo 5). Ejemplo:
+#   - fecha: 2026-10-30
+#     quien: Nombre Apellido / QA - Equipo 3
+#     descripcion: Revisado y aprobado
+revisiones: []

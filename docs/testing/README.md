@@ -78,6 +78,6 @@ python tools/generar_documentos.py --sin-github   # sin conexión: el Bug report
 ## Antes de entregar
 
 * Pongan nombres reales en `meta.yml`: `testers` y `nombres`.
+* Cada integrante agrega su línea en `revisiones` de `meta.yml` (sale en la hoja `intro`).
 * Ejecuten los TC manuales y registren su resultado.
 * Descarguen el artefacto `entregables-qa` de la última corrida en `main`.
-* Agreguen en la hoja `intro` la línea de revisión de cada integrante.
