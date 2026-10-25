@@ -10,7 +10,6 @@ from tkinter import font, messagebox, ttk
 import unittest
 from unittest.mock import patch
 
-from mis_trapitos.data.database import Database
 from mis_trapitos.data.repositories import empleados as empleados_repo
 from mis_trapitos.data.repositories import productos as productos_repo
 from mis_trapitos.ui.app import App

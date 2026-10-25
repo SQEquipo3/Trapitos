@@ -7,8 +7,7 @@ from unittest.mock import Mock, patch
 
 from config import PAYMENT_METHODS
 from mis_trapitos.data.database import Database
-from utils import today_text
-from mis_trapitos.data.seed import date_offset
+from utils import date_offset, today_text
 from mis_trapitos.ui.app import App
 from mis_trapitos.ui.devoluciones import DevolucionesUI
 from mis_trapitos.ui.promociones import PromocionesUI

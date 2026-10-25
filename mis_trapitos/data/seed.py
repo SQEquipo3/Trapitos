@@ -1,17 +1,14 @@
 """Datos de demostración opcionales para Mis trapitos."""
 
 import os
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 from PIL import Image, ImageDraw
 
-from config import DATE_FMT, DATETIME_FMT, PAYMENT_METHODS
-from utils import hash_password, now_text
+from config import DATETIME_FMT, PAYMENT_METHODS
+from utils import date_offset, hash_password, now_text
 from mis_trapitos.data.repositories import productos as productos_repo
 from mis_trapitos.services import devoluciones as devoluciones_srv
 from mis_trapitos.services import ventas as ventas_srv
-
-def date_offset(days):
-    return (date.today() + timedelta(days=days)).strftime(DATE_FMT)
 
 def create_sample_images(db):
     from mis_trapitos.ui.productos import IMAGE_DIR
