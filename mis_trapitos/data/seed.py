@@ -6,6 +6,8 @@ from PIL import Image, ImageDraw
 
 from config import DATE_FMT, DATETIME_FMT, PAYMENT_METHODS
 from utils import hash_password, now_text
+from mis_trapitos.services import devoluciones as devoluciones_srv
+from mis_trapitos.services import ventas as ventas_srv
 
 def date_offset(days):
     return (date.today() + timedelta(days=days)).strftime(DATE_FMT)
@@ -153,11 +155,11 @@ def seed_sales(db, product_ids, cancelled, count):
         ]
         customer_id = customers[i % len(customers)] if customers else None
         employee_id = employees[i % len(employees)] if employees else 1
-        sale_id, subtotal, discount_amount, total = db.register_sale(customer_id, employee_id,
+        sale_id, subtotal, discount_amount, total = ventas_srv.registrar(db, customer_id, employee_id,
 PAYMENT_METHODS[i % len(PAYMENT_METHODS)], i * 2, cart)
         db.execute("UPDATE sales SET sale_datetime=? WHERE id=?", ((datetime.now() - timedelta(days=i)).strftime(DATETIME_FMT), sale_id))
         if cancelled:
-            db.cancel_sale(sale_id, "Producto en buenas condiciones")
+            devoluciones_srv.cancelar_venta(db, sale_id, "Producto en buenas condiciones")
 
 
 def seed_returns(db):
@@ -176,6 +178,6 @@ def seed_returns(db):
         sold = int(row["quantity"])
         returned = db.scalar("SELECT COALESCE(SUM(quantity),0) FROM returns WHERE sale_id=? AND product_id=?", (row["sale_id"], row["product_id"])) or 0
         if sold - returned > 0:
-            db.return_item(row["sale_id"], row["product_id"], 1, "Producto Dañado")
+            devoluciones_srv.devolver(db, row["sale_id"], row["product_id"], 1, "Producto Dañado")
             used += 1
 

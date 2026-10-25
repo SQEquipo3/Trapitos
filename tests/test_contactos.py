@@ -5,6 +5,7 @@ import pytest
 
 from mis_trapitos.data.repositories import clientes, empleados, proveedores
 from utils import today_text
+from mis_trapitos.services import ventas as ventas_srv
 
 
 def cliente(nombre="Ana"):
@@ -21,7 +22,7 @@ def test_alta_y_edicion_de_cliente(db):
 def test_cliente_con_ventas_no_se_puede_eliminar(db, empleado, make_product):
     cid = clientes.guardar(db, None, cliente())
     pid = make_product()
-    db.register_sale(cid, empleado, "Efectivo", 0, [{"product_id": pid, "quantity": 1}])
+    ventas_srv.registrar(db, cid, empleado, "Efectivo", 0, [{"product_id": pid, "quantity": 1}])
     with pytest.raises(sqlite3.IntegrityError):
         clientes.eliminar(db, cid)
 
@@ -29,8 +30,8 @@ def test_cliente_con_ventas_no_se_puede_eliminar(db, empleado, make_product):
 def test_historial_resumen_y_producto_favorito(db, empleado, make_product):
     cid = clientes.guardar(db, None, cliente())
     a, b = make_product(name="Blusa"), make_product(name="Falda")
-    db.register_sale(cid, empleado, "Efectivo", 0, [{"product_id": a, "quantity": 3}])
-    db.register_sale(cid, empleado, "Efectivo", 0, [{"product_id": b, "quantity": 1}])
+    ventas_srv.registrar(db, cid, empleado, "Efectivo", 0, [{"product_id": a, "quantity": 3}])
+    ventas_srv.registrar(db, cid, empleado, "Efectivo", 0, [{"product_id": b, "quantity": 1}])
     assert len(clientes.historial(db, cid)) == 2
     assert clientes.resumen_compras(db, cid)["compras"] == 2
     assert clientes.producto_favorito(db, cid)["producto"] == "Blusa"

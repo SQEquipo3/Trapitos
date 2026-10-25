@@ -5,12 +5,15 @@ from tkinter import messagebox
 import unittest
 from unittest.mock import Mock, patch
 
-from mis_trapitos.data.database import Database, PAYMENT_METHODS, today_text
+from config import PAYMENT_METHODS
+from mis_trapitos.data.database import Database
+from utils import today_text
 from mis_trapitos.data.seed import date_offset
 from mis_trapitos.ui.app import App
 from mis_trapitos.ui.devoluciones import DevolucionesUI
 from mis_trapitos.ui.promociones import PromocionesUI
-from mis_trapitos.ui.ventas import ServicioVentas
+from mis_trapitos.services.ventas import ServicioVentas
+from mis_trapitos.services import ventas as ventas_srv
 
 
 def set_entry(entry, value):
@@ -133,7 +136,7 @@ class PromocionesUITest(ModuleWidgetTest):
 class DevolucionesUITest(ModuleWidgetTest):
     def setUp(self):
         super().setUp()
-        self.sale_id = self.db.register_sale(None, self.employee_id, PAYMENT_METHODS[0], 0, [
+        self.sale_id = ventas_srv.registrar(self.db, None, self.employee_id, PAYMENT_METHODS[0], 0, [
             {"product_id": self.product_id, "quantity": 5},
         ])[0]
         self.observed_stocks = []

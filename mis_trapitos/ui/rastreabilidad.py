@@ -12,7 +12,7 @@ from mis_trapitos.ui.base import (
     make_tree,
 )
 
-from mis_trapitos.ui.ventas import ServicioVentas
+from mis_trapitos.services.ventas import ServicioVentas
 from config import APP_TITLE, APP_VERSION, DB_NAME, PAYMENT_METHODS
 
 # PEGA AQUÍ CONFIG_ITEMS Y TRACEABILITY

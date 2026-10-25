@@ -7,7 +7,7 @@ reqs:
 tests:
 - tests/test_ventas.py::test_cancelacion_repone_todo_y_marca_venta
 - tests/test_ventas.py::test_cancelar_dos_veces_o_devolver_en_cancelada_es_rechazado
-objective: cancel_sale restaura stock, marca CANCELADA y evita doble cancelación o devolución.
+objective: services.devoluciones.cancelar_venta restaura stock, marca CANCELADA y evita doble cancelación o devolución.
 pre: Venta de 4 piezas.
 steps:
 - Cancelar la venta

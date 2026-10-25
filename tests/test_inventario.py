@@ -6,6 +6,8 @@ import pytest
 from mis_trapitos.data.repositories import productos
 from utils import dinero, hash_password, today_text
 from tests.conftest import stock
+from mis_trapitos.services import devoluciones as devoluciones_srv
+from mis_trapitos.services import ventas as ventas_srv
 
 
 def datos(code="BL-01", stock_=5, price=200, purchase=80, size="M", color="Azul", supplier=None):
@@ -86,8 +88,8 @@ def test_edicion_sin_cambio_de_stock_no_genera_movimiento(db):
 def test_stock_es_suma_de_movimientos(db, empleado):
     """RNF-01: el stock visible siempre concilia con el kardex."""
     pid = productos.guardar(db, None, datos(stock_=10))
-    db.register_sale(None, empleado, "Efectivo", 0, [{"product_id": pid, "quantity": 4}])
-    db.return_item(1, pid, 1, "talla")
+    ventas_srv.registrar(db, None, empleado, "Efectivo", 0, [{"product_id": pid, "quantity": 4}])
+    devoluciones_srv.devolver(db, 1, pid, 1, "talla")
     productos.guardar(db, pid, datos(stock_=20))
     kardex = db.scalar("SELECT SUM(quantity) FROM inventory_movements WHERE product_id=?", (pid,))
     assert kardex == stock(db, pid) == 20

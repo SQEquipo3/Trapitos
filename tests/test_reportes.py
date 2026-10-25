@@ -2,6 +2,8 @@
 import pytest
 
 from tests.conftest import dias
+from mis_trapitos.services import devoluciones as devoluciones_srv
+from mis_trapitos.services import ventas as ventas_srv
 
 
 @pytest.fixture
@@ -14,15 +16,15 @@ def mundo(db, empleado, make_product):
     viejo = make_product("VI", "Abrigo", "Ropa", price=900, stock=3)
     cli = db.save_customer(None, ("Ana", "555-1", "a@x.com", "Calle", "Guadalajara", ""))
     cli2 = db.save_customer(None, ("Beto", "555-2", "b@x.com", "Calle", "Zapopan", ""))
-    v1, *_ = db.register_sale(cli, empleado, "Efectivo", 0, [{"product_id": blusa, "quantity": 2}])
-    v2, *_ = db.register_sale(cli, empleado, "Tarjeta de debito", 0, [{"product_id": blusa, "quantity": 1},
+    v1, *_ = ventas_srv.registrar(db, cli, empleado, "Efectivo", 0, [{"product_id": blusa, "quantity": 2}])
+    v2, *_ = ventas_srv.registrar(db, cli, empleado, "Tarjeta de debito", 0, [{"product_id": blusa, "quantity": 1},
                                                                        {"product_id": zapato, "quantity": 1}])
-    v3, *_ = db.register_sale(cli2, empleado, "Efectivo", 0, [{"product_id": zapato, "quantity": 1}])
+    v3, *_ = ventas_srv.registrar(db, cli2, empleado, "Efectivo", 0, [{"product_id": zapato, "quantity": 1}])
     # venta vieja (hace 5 meses) del abrigo y una cancelada
-    v4, *_ = db.register_sale(cli2, empleado, "Efectivo", 0, [{"product_id": viejo, "quantity": 1}])
+    v4, *_ = ventas_srv.registrar(db, cli2, empleado, "Efectivo", 0, [{"product_id": viejo, "quantity": 1}])
     db.execute("UPDATE sales SET sale_datetime=? WHERE id=?", (dias(-150), v4))
-    v5, *_ = db.register_sale(cli, empleado, "Tarjeta de credito", 0, [{"product_id": blusa, "quantity": 1}])
-    db.cancel_sale(v5, "x")
+    v5, *_ = ventas_srv.registrar(db, cli, empleado, "Tarjeta de credito", 0, [{"product_id": blusa, "quantity": 1}])
+    devoluciones_srv.cancelar_venta(db, v5, "x")
     db.execute("UPDATE sales SET sale_datetime=? WHERE id=?", (dias(-2), v3))
     db.execute("UPDATE sales SET sale_datetime=? WHERE id=?", (dias(-20), v1))
     db.save_promotion(None, blusa, 15, dias(-1)[:10], dias(5)[:10])

@@ -15,7 +15,7 @@ from mis_trapitos.ui.devoluciones import DevolucionesUI
 from mis_trapitos.ui.login import Login
 from mis_trapitos.ui.productos import ProductosUI
 from mis_trapitos.ui.promociones import PromocionesUI
-from mis_trapitos.ui.ventas import VentasUI, ServicioVentas
+from mis_trapitos.ui.ventas import VentasUI
 from mis_trapitos.ui.styles import UI_COLORS, configure_styles
 from mis_trapitos.ui.reportes import ReportesUI
 from mis_trapitos.ui.rastreabilidad import RastreabilidadUI

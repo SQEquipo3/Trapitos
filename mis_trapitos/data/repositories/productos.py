@@ -20,6 +20,11 @@ def obtener_por_codigo(db, code):
     return db.one("SELECT * FROM products WHERE code=?", (code,))
 
 
+def ajustar_stock(db, product_id, delta):
+    """Suma `delta` (negativo para descontar) al stock del producto."""
+    db.execute("UPDATE products SET stock = stock + ? WHERE id=?", (delta, product_id))
+
+
 def proveedor_existe(db, supplier_id):
     return db.one("SELECT id FROM suppliers WHERE id=?", (supplier_id,)) is not None
 

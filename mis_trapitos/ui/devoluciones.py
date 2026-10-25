@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import messagebox, ttk
 
+from mis_trapitos.services import devoluciones as devoluciones_srv
 from mis_trapitos.ui.base import ActionBar, FormGrid, ScrollablePage, make_tree, tree_clear
 
 
@@ -47,7 +48,8 @@ class DevolucionesUI(ScrollablePage):
 
     def return_item_ui(self):
         try:
-            self.db.return_item(
+            devoluciones_srv.devolver(
+                self.db,
                 int(self.r_sale.get()),
                 int(self.r_product.get()),
                 int(self.r_quantity.get()),
@@ -62,8 +64,8 @@ class DevolucionesUI(ScrollablePage):
 
     def cancel_sale_ui(self):
         try:
-            self.db.cancel_sale(
-                int(self.cancel_sale_entry.get()), self.cancel_reason.get().strip()
+            devoluciones_srv.cancelar_venta(
+                self.db, int(self.cancel_sale_entry.get()), self.cancel_reason.get().strip()
             )
             self.refresh_returns()
             if self.on_inventario_actualizado is not None:

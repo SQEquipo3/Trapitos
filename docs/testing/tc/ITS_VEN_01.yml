@@ -8,7 +8,7 @@ reqs:
 tests:
 - tests/test_ventas.py::test_venta_descuenta_stock_y_registra_salida
 - tests/test_ventas.py::test_venta_multiproducto_guarda_partidas
-objective: register_sale actualiza sales, sale_items, products e inventory_movements en conjunto.
+objective: services.ventas.registrar actualiza sales, sale_items, products e inventory_movements en conjunto.
 pre: Productos con stock y un empleado.
 steps:
 - Vender 4 piezas de un producto
