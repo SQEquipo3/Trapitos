@@ -1,11 +1,10 @@
 """Escenarios de aceptación automatizables (VD-01 … VD-07 del SDD §10).
 
 Cada prueba cuenta una historia completa del usuario usando solo la capa de
-datos pública (repositorios), como lo haría la interfaz.
+datos pública (repositorios y servicios), como lo haría la interfaz.
 """
-import pytest
 
-from mis_trapitos.data.repositories import clientes, productos, promociones, reportes, ventas
+from mis_trapitos.data.repositories import clientes, productos, promociones, reportes
 from tests.conftest import dias, stock
 from utils import today_text
 from mis_trapitos.services import devoluciones as devoluciones_srv

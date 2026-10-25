@@ -5,7 +5,6 @@
   que ``tools/generar_documentos.py`` cruza con ``docs/testing/tc/*.yml``.
 """
 import json
-import os
 import sys
 from datetime import date, timedelta
 from pathlib import Path

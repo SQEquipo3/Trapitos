@@ -183,3 +183,6 @@ cython_debug/
 reports/
 entregables/
 .coverage
+
+# Base de datos local: se genera sola con schema.py y seed.py
+mis_trapitos.db

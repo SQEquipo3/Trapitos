@@ -4,8 +4,6 @@ import tkinter as tk
 
 from tkinter import messagebox, ttk
 
-from config import PAYMENT_METHODS
-
 from mis_trapitos.ui.base import (
     ActionBar,
     ScrollablePage,
@@ -16,10 +14,8 @@ from mis_trapitos.data.repositories import clientes as clientes_repo
 from mis_trapitos.data.repositories import empleados as empleados_repo
 from mis_trapitos.data.repositories import productos as productos_repo
 from mis_trapitos.services.ventas import ServicioVentas
-from config import APP_TITLE, APP_VERSION, DB_NAME, PAYMENT_METHODS
+from config import APP_VERSION, PAYMENT_METHODS
 
-# PEGA AQUÍ CONFIG_ITEMS Y TRACEABILITY
-# CON SU CONTENIDO ORIGINAL DE app.py.
 CONFIG_ITEMS = [
     ("CI-01", "Codigo fuente principal", "main.py", "Controlado"),
     ("CI-02", "Base de datos local", "mis_trapitos.db", "Controlado"),
@@ -60,7 +56,7 @@ TRACEABILITY = [
     ("RF-25", "Consultar compras por ciudad o region del cliente", "Reportes", "Agrupar por region"),
     ("RF-26", "Consultar productos no vendidos en los ultimos tres meses", "Reportes", "Reporte sin ventas recientes"),
     ("RNF-01", "Reflejar en tiempo real la disminucion del inventario", "Ventas e Inventario", "Validar stock inmediatamente despues de vender"),
-] 
+]
 
 class RastreabilidadUI(ScrollablePage):
 
