@@ -7,7 +7,7 @@ reqs:
 tests:
 - tests/test_inventario.py::test_hash_password_es_sha256_determinista
 - tests/test_inventario.py::test_autenticacion_valida_e_invalida
-objective: Verificar SHA-256 determinista y que authenticate solo acepta credenciales correctas.
+objective: Verificar SHA-256 determinista y que empleados.autenticar solo acepta credenciales correctas.
 pre: Empleado 'vende' con contraseña 1234.
 steps:
 - Calcular hash dos veces

@@ -3,6 +3,8 @@
 Todas las funciones reciben el objeto Database (data/database.py).
 """
 
+from utils import now_text
+
 
 def listar(db):
     """Filas para la tabla de clientes (el orden de columnas importa a la UI)."""
@@ -11,6 +13,10 @@ def listar(db):
                   city_region AS region, preferences AS preferencias
            FROM customers ORDER BY id DESC"""
     )
+
+
+def primero(db):
+    return db.one("SELECT * FROM customers ORDER BY id LIMIT 1")
 
 
 def obtener_por_id(db, customer_id):
@@ -23,7 +29,18 @@ def existe(db, customer_id):
 
 def guardar(db, customer_id, data):
     """Alta (customer_id=None) o edición. Regresa el id del cliente."""
-    return db.save_customer(customer_id, data)
+    if customer_id:
+        db.execute(
+            "UPDATE customers SET name=?, phone=?, email=?, address=?, city_region=?, preferences=? WHERE id=?",
+            (*data, customer_id),
+        )
+        return customer_id
+    cur = db.execute(
+        """INSERT INTO customers(name, phone, email, address, city_region, preferences, created_at)
+           VALUES(?,?,?,?,?,?,?)""",
+        (*data, now_text()),
+    )
+    return cur.lastrowid
 
 
 def eliminar(db, customer_id):
@@ -32,7 +49,16 @@ def eliminar(db, customer_id):
 
 
 def historial(db, customer_id):
-    return db.customer_history(customer_id)
+    """Partidas de todas las ventas del cliente, de la más reciente a la más antigua."""
+    return db.query(
+        """SELECT s.id AS venta, s.sale_datetime AS fecha, p.code AS codigo,
+                  p.name AS producto, si.quantity AS cantidad, si.line_total AS total_linea,
+                  s.total AS total_venta, s.status AS estado
+           FROM sales s JOIN sale_items si ON si.sale_id=s.id
+           JOIN products p ON p.id=si.product_id
+           WHERE s.customer_id=? ORDER BY s.sale_datetime DESC""",
+        (customer_id,),
+    )
 
 
 def resumen_compras(db, customer_id):

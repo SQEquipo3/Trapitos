@@ -10,8 +10,11 @@ from tkinter import font, messagebox, ttk
 import unittest
 from unittest.mock import patch
 
-from mis_trapitos.data.database import Database, today_text
+from mis_trapitos.data.database import Database
+from mis_trapitos.data.repositories import empleados as empleados_repo
+from mis_trapitos.data.repositories import productos as productos_repo
 from mis_trapitos.ui.app import App
+from utils import today_text
 
 
 SCREENS = (
@@ -87,8 +90,8 @@ class LayoutTest(unittest.TestCase):
                 callback_errors = []
                 app.report_callback_exception = lambda *args: callback_errors.append(args)
                 try:
-                    app.db.save_employee(None, "Administrador", "admin", "1234", "Propietario")
-                    app.db.save_product(None, (
+                    empleados_repo.guardar(app.db, None, "Administrador", "admin", "1234", "Propietario")
+                    productos_repo.guardar(app.db, None, (
                         "LAYOUT-01", "Blusa de prueba", "Ropa", "M", "Azul",
                         80, 150, 20, None, today_text(), "Marca", "Temporada", "",
                     ))

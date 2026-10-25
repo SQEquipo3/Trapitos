@@ -54,7 +54,7 @@ def test_proveedor_duplicado_o_con_productos_no_se_elimina(db, make_product):
 def test_empleado_no_cambia_password_si_viene_vacio(db):
     eid = empleados.guardar(db, None, "Luis", "luis", "secreto", "Vendedor")
     empleados.guardar(db, eid, "Luis R", "luis", "", "Vendedor")
-    assert db.authenticate("luis", "secreto") is not None
+    assert empleados.autenticar(db, "luis", "secreto") is not None
 
 
 def test_usuario_de_empleado_es_unico(db):

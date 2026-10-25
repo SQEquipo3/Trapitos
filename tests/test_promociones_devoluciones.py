@@ -14,6 +14,9 @@ from mis_trapitos.ui.devoluciones import DevolucionesUI
 from mis_trapitos.ui.promociones import PromocionesUI
 from mis_trapitos.services.ventas import ServicioVentas
 from mis_trapitos.services import ventas as ventas_srv
+from mis_trapitos.data.repositories import empleados as empleados_repo
+from mis_trapitos.data.repositories import productos as productos_repo
+from mis_trapitos.data.repositories import promociones as promociones_repo
 
 
 def set_entry(entry, value):
@@ -22,7 +25,7 @@ def set_entry(entry, value):
 
 
 def add_product(db, code="BLUSA-M", stock=10):
-    return db.save_product(None, (
+    return productos_repo.guardar(db, None, (
         code, "Blusa", "Ropa", "M", "Azul", 80, 200, stock,
         None, today_text(), "Marca", "Temporada", "",
     ))
@@ -73,7 +76,7 @@ class ModuleWidgetTest(TemporaryWorkflowTest):
         self.root = tk.Tk()
         self.root.withdraw()
         self.addCleanup(self.root.destroy)
-        self.employee_id = self.db.save_employee(None, "Ventas", "ventas", "1234", "Ventas")
+        self.employee_id = empleados_repo.guardar(self.db, None, "Ventas", "ventas", "1234", "Ventas")
         self.product_id = add_product(self.db)
 
 
@@ -226,7 +229,7 @@ class PromocionesSessionTest(TemporaryWorkflowTest):
         app = App(db_path=self.path)
         app.withdraw()
         self.addCleanup(app.on_close)
-        app.db.save_employee(None, "Administrador", "admin", "1234", "Administrador")
+        empleados_repo.guardar(app.db, None, "Administrador", "admin", "1234", "Administrador")
 
         def login():
             set_entry(app.login_view.username_entry, "admin")
@@ -256,7 +259,7 @@ class PromocionesSessionTest(TemporaryWorkflowTest):
         self.assertEqual(len(app.promociones_ui.promotions_tree.get_children()), 1)
         select_promotion(app.promociones_ui, promotion_id)
         self.assertEqual(float(app.promociones_ui.pr_discount.get()), 15)
-        self.assertEqual(app.db.active_promotion_percent(product_id), 15)
+        self.assertEqual(promociones_repo.porcentaje_vigente(app.db, product_id), 15)
         self.error.assert_not_called()
 
 

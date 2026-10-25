@@ -1,11 +1,13 @@
 """ Interfaz y orquestador"""
 
 import csv
+import functools
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
 from config import APP_TITLE, APP_VERSION, DB_NAME, PAYMENT_METHODS
 from mis_trapitos.data.database import Database
+from mis_trapitos.data.repositories import empleados as empleados_repo
 from mis_trapitos.ui.base import (
     ActionBar, FormGrid, ScrollablePage, configure_tree_columns,
     handle_page_event, make_tree,
@@ -139,7 +141,7 @@ class App(tk.Tk):
         self.user = None
         self.login_view = Login(
             self,
-            authenticate=self.db.authenticate,
+            authenticate=functools.partial(empleados_repo.autenticar, self.db),
             on_authenticated=self._on_authenticated,
         )
         self.login_view.pack(expand=True)

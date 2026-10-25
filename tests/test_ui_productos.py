@@ -17,6 +17,7 @@ from PIL import Image
 from mis_trapitos.data.database import Database
 from mis_trapitos.ui import app as application
 from mis_trapitos.ui import productos as ui_productos
+from mis_trapitos.data.repositories import empleados as empleados_repo
 
 
 def set_entry(entry, value):
@@ -251,7 +252,7 @@ class ProductosAppIntegrationTest(TemporaryInventoryTest):
         self.app.withdraw()
         self.addCleanup(self.app.on_close)
         self.db = self.app.db
-        employee_id = self.db.save_employee(None, "Prueba", "prueba", "prueba", "Administrador")
+        employee_id = empleados_repo.guardar(self.db, None, "Prueba", "prueba", "prueba", "Administrador")
         set_entry(self.app.login_view.username_entry, "prueba")
         set_entry(self.app.login_view.password_entry, "prueba")
         self.app.login_view.submit()

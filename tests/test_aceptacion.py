@@ -29,7 +29,7 @@ def test_vd02_ajuste_manual_queda_en_kardex(db):
     pid = alta(db, "A1", stock_=10)
     productos.guardar(db, pid, ("A1", "Prenda A1", "Ropa", "M", "Azul", 80, 200, 15, None,
                                 today_text(), "M", "T", ""))
-    assert sorted(r["cantidad"] for r in db.report("Entradas de mercancia")) == [5, 10]
+    assert sorted(r["cantidad"] for r in reportes.ejecutar(db, "Entradas de mercancia")) == [5, 10]
 
 
 def test_vd03_dia_de_venta_con_promocion_y_descuento_general(db, empleado):
@@ -47,7 +47,7 @@ def test_vd04_devolucion_parcial_y_cancelacion_posterior(db, empleado):
     devoluciones_srv.devolver(db, sid, pid, 2, "Defecto")
     devoluciones_srv.cancelar_venta(db, sid, "Cliente se arrepintió")
     assert stock(db, pid) == 10
-    tipos = [r["tipo"] for r in db.report("Productos devueltos o cancelados")]
+    tipos = [r["tipo"] for r in reportes.ejecutar(db, "Productos devueltos o cancelados")]
     assert sorted(tipos) == ["CANCELACION", "DEVOLUCION"]
 
 
@@ -55,7 +55,7 @@ def test_vd05_promocion_deja_de_aplicar_al_vencer(db, empleado):
     pid = alta(db, "P1", price=100)
     promociones.guardar(db, None, pid, 50, dias(-5)[:10], dias(-1)[:10])
     _, sub, *_ = ventas_srv.registrar(db, None, empleado, "Efectivo", 0, [{"product_id": pid, "quantity": 1}])
-    assert sub == 100 and db.report("Productos en oferta") == []
+    assert sub == 100 and reportes.ejecutar(db, "Productos en oferta") == []
 
 
 def test_vd06_historial_de_cliente_refleja_cancelaciones(db, empleado):

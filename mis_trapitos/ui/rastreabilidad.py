@@ -12,6 +12,9 @@ from mis_trapitos.ui.base import (
     make_tree,
 )
 
+from mis_trapitos.data.repositories import clientes as clientes_repo
+from mis_trapitos.data.repositories import empleados as empleados_repo
+from mis_trapitos.data.repositories import productos as productos_repo
 from mis_trapitos.services.ventas import ServicioVentas
 from config import APP_TITLE, APP_VERSION, DB_NAME, PAYMENT_METHODS
 
@@ -113,15 +116,9 @@ class RastreabilidadUI(ScrollablePage):
 
     def run_basic_tests(self):
         try:
-            product = self.db.one(
-                "SELECT * FROM products ORDER BY stock DESC LIMIT 1"
-            )
-            employee = self.db.one(
-                "SELECT * FROM employees ORDER BY id LIMIT 1"
-            )
-            customer = self.db.one(
-                "SELECT * FROM customers ORDER BY id LIMIT 1"
-            )
+            product = productos_repo.con_mas_stock(self.db)
+            employee = empleados_repo.primero(self.db)
+            customer = clientes_repo.primero(self.db)
 
             if not product or not employee:
                 raise ValueError(
@@ -145,20 +142,9 @@ class RastreabilidadUI(ScrollablePage):
                 0
             ).sale_id
 
-            after = self.db.scalar(
-                "SELECT stock FROM products WHERE id=?",
-                (product["id"],)
-            )
+            after = int(productos_repo.obtener_por_id(self.db, product["id"])["stock"])
 
-            movement = self.db.one(
-                """
-                SELECT id
-                FROM inventory_movements
-                WHERE related_sale_id=?
-                  AND movement_type='SALIDA'
-                """,
-                (sale_id,)
-            )
+            movement = productos_repo.movimiento_de_venta(self.db, sale_id, "SALIDA")
 
             if after != initial_stock - 1 or not movement:
                 raise ValueError(
