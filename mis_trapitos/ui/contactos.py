@@ -15,15 +15,16 @@ from mis_trapitos.ui.base import ActionBar, FormGrid, ScrollablePage, make_tree
 
 from mis_trapitos.data.repositories import clientes as clientes_repo
 from mis_trapitos.data.repositories import proveedores as proveedores_repo
-from mis_trapitos.data.repositories import empleados as empleados_repo
+from mis_trapitos.services import empleados as empleados_srv
 
 
 class ContactosUI(ttk.Frame):
     """Pestaña de contactos y usuarios con estado propio y actualización explícita."""
 
-    def __init__(self, parent, db):
+    def __init__(self, parent, db, get_user):
         super().__init__(parent, padding=0)
         self.db = db
+        self.get_user = get_user
         self.selected_customer_id = None
         self.selected_supplier_id = None
         self.selected_employee_id = None
@@ -338,6 +339,9 @@ class ContactosUI(ttk.Frame):
     def _build_employees_tab(self, nb):
         tab = ScrollablePage(nb, padding=0)
         nb.add(tab, text="Empleados")
+        if not empleados_srv.puede_administrar(self.db, self.get_user()):
+            ttk.Label(tab.body, text=empleados_srv.ACCESO_DENEGADO, wraplength=600).pack(anchor="w", pady=10)
+            return
         form = ttk.LabelFrame(tab.body, text="Datos del empleado", padding=(0, 10))
         form.pack(fill="x")
         fields = FormGrid(form, columns=2, min_column_width=220)
@@ -356,11 +360,19 @@ class ContactosUI(ttk.Frame):
         self.employees_tree.bind("<<TreeviewSelect>>", self.load_employee_selected)
         self.refresh_employees()
 
+    def _check_employee_permission(self):
+        if empleados_srv.puede_administrar(self.db, self.get_user()):
+            return True
+        messagebox.showerror("Empleados", empleados_srv.ACCESO_DENEGADO, parent=self)
+        return False
+
     def save_employee_ui(self):
+        if not self._check_employee_permission():
+            return
         try:
             if not self.e_name.get().strip() or not self.e_username.get().strip():
                 raise ValueError("Nombre y usuario son obligatorios.")
-            self.selected_employee_id = empleados_repo.guardar(self.db,
+            self.selected_employee_id = empleados_srv.guardar(self.db, self.get_user(),
                 self.selected_employee_id,
                 self.e_name.get().strip(),
                 self.e_username.get().strip(),
@@ -373,17 +385,21 @@ class ContactosUI(ttk.Frame):
             messagebox.showerror("Empleados", str(e), parent=self)
 
     def refresh_employees(self):
-        rows = empleados_repo.listar(self.db)
+        if not self._check_employee_permission():
+            return
+        rows = empleados_srv.listar(self.db, self.get_user())
         self._tree_clear(self.employees_tree)
         for row in rows:
             self.employees_tree.insert("", tk.END, values=[row[key] for key in row.keys()])
 
     def load_employee_selected(self, event=None):
+        if not self._check_employee_permission():
+            return
         sel = self.employees_tree.selection()
         if not sel:
             return
         employee_id = self.employees_tree.item(sel[0], "values")[0]
-        row = empleados_repo.obtener_por_id(self.db, employee_id)
+        row = empleados_srv.obtener_por_id(self.db, self.get_user(), employee_id)
         if not row:
             return
         self.selected_employee_id = row["id"]
@@ -393,6 +409,8 @@ class ContactosUI(ttk.Frame):
         )
 
     def clear_employee_form(self):
+        if not self._check_employee_permission():
+            return
         self.selected_employee_id = None
         for entry in [self.e_name, self.e_username, self.e_password, self.e_role]:
             entry.delete(0, tk.END)

@@ -39,15 +39,20 @@
   name: Permisos por rol de empleado (brecha B-04)
   reqs:
   - SEG-01
-  blocked_by: '#57'
   objective: Un empleado con rol Vendedor no debe poder administrar empleados.
-  pre: Usuarios Administrador y Vendedor.
+  pre: Usuarios Administrador o Propietario y Vendedor en una BD de prueba.
   steps:
   - Entrar como Vendedor
   - Intentar abrir la gestión de empleados
+  - Cerrar sesión y entrar como Administrador o Propietario
+  - Crear y editar un empleado
+  - Cerrar sesión y volver a entrar como Vendedor
+  - Intentar abrir nuevamente la gestión de empleados
   expected:
-  - Acceso denegado
-  comments: 'Brecha B-04: el rol aún no tiene autorización efectiva.'
+  - El Vendedor recibe acceso denegado, sin formulario ni listado de empleados
+  - El Administrador o Propietario puede crear y editar empleados
+  - El cambio de sesión no conserva permisos del usuario anterior
+  comments: 'Pendiente de ejecución manual tras la corrección #57. Regresiones automatizadas: STS_SEG_01 e ITS_SEG_01.'
 
 - id: ATS_VD_08
   level: ATS

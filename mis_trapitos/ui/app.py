@@ -142,7 +142,7 @@ class App(tk.Tk):
         self.make_products_tab(nb)
         self.ventas_ui = VentasUI(nb, self.db, self.user, on_venta_registrada=self.refresh_products)
         nb.add(self.ventas_ui, text="Ventas")
-        self.contactos_ui = ContactosUI(nb, self.db)
+        self.contactos_ui = ContactosUI(nb, self.db, get_user=lambda: self.user)
         nb.add(self.contactos_ui, text="Contactos y usuarios")
         self.promociones_ui = PromocionesUI(nb, self.db)
         nb.add(self.promociones_ui, text="Promociones")
