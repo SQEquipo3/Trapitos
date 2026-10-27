@@ -1,3 +1,4 @@
+from functools import partial
 from pathlib import Path
 import tempfile
 import tkinter as tk
@@ -11,7 +12,7 @@ from utils import date_offset, today_text
 from mis_trapitos.ui.app import App
 from mis_trapitos.ui.devoluciones import DevolucionesUI
 from mis_trapitos.ui.promociones import PromocionesUI
-from mis_trapitos.services.ventas import ServicioVentas
+from mis_trapitos.ui.ventas import VentasUI
 from mis_trapitos.services import ventas as ventas_srv
 from mis_trapitos.data.repositories import empleados as empleados_repo
 from mis_trapitos.data.repositories import productos as productos_repo
@@ -58,7 +59,7 @@ class TemporaryWorkflowTest(unittest.TestCase):
         directory = tempfile.TemporaryDirectory(prefix="trapitos-workflows-")
         self.addCleanup(directory.cleanup)
         self.path = str(Path(directory.name) / "test.db")
-        self.start_patch(patch("mis_trapitos.data.database.seed_examples"))
+        self.start_patch(patch("mis_trapitos.ui.app.Database", side_effect=partial(Database, load_examples=False)))
         self.info = self.start_patch(patch.object(messagebox, "showinfo"))
         self.error = self.start_patch(patch.object(messagebox, "showerror"))
 
@@ -71,7 +72,7 @@ class TemporaryWorkflowTest(unittest.TestCase):
 class ModuleWidgetTest(TemporaryWorkflowTest):
     def setUp(self):
         super().setUp()
-        self.db = Database(self.path)
+        self.db = Database(self.path, load_examples=False)
         self.addCleanup(self.db.close)
         self.root = tk.Tk()
         self.root.withdraw()
@@ -94,11 +95,13 @@ class PromocionesUITest(ModuleWidgetTest):
         Pasos:
         - Crear promoción
         - Editarla y limpiar
-        - Vender el producto
+        - Agregar el producto al carrito y registrar la venta desde la interfaz
         - Reabrir sesión
+        - Registrar una vigencia de un día, una fecha bisiesta y fechas predeterminadas
         Esperado:
-        - El descuento aparece en la venta
+        - El descuento aparece en el carrito, el ticket y la venta persistida
         - La sesión reabierta conserva promociones y reinicia selección
+        - Las fechas válidas se guardan y los campos vacíos toman la fecha actual
         """
         fill_promotion(self.ui, self.product_id)
         self.ui.save_promotion_ui()
@@ -122,13 +125,23 @@ class PromocionesUITest(ModuleWidgetTest):
         self.assertEqual(self.ui.pr_discount.get(), "")
         self.assertEqual(self.ui.pr_start.get(), today_text())
         self.assertEqual(self.ui.pr_end.get(), date_offset(30))
-        sale = ServicioVentas(self.db)
-        sale.agregar_producto("BLUSA-M", 2)
-        result = sale.registrar_venta(None, self.employee_id, PAYMENT_METHODS[0], 10)
-        self.assertAlmostEqual(result.subtotal, 300)
-        self.assertAlmostEqual(result.descuento, 30)
-        self.assertAlmostEqual(result.total, 270)
-        line = self.db.one("SELECT * FROM sale_items WHERE sale_id=?", (result.sale_id,))
+        sale = VentasUI(self.root, self.db, empleados_repo.obtener_por_id(self.db, self.employee_id))
+        set_entry(sale.sale_product_code, "BLUSA-M")
+        set_entry(sale.sale_quantity, 2)
+        set_entry(sale.sale_discount, 10)
+        sale.add_cart_item()
+        cart_row = sale.cart_tree.get_children()[0]
+        self.assertEqual(sale.cart_tree.set(cart_row, "promo"), "25%")
+        sale.register_sale_ui()
+        result = self.db.one("SELECT * FROM sales ORDER BY id DESC LIMIT 1")
+        self.assertAlmostEqual(result["subtotal"], 300)
+        self.assertAlmostEqual(result["discount_amount"], 30)
+        self.assertAlmostEqual(result["total"], 270)
+        self.assertIn("VENTA REGISTRADA", sale.ticket_text.get("1.0", "end"))
+        self.assertIn("Total: $270.00", sale.ticket_text.get("1.0", "end"))
+        self.assertEqual(sale.cart_tree.get_children(), ())
+        self.assertEqual(sale.servicio.cart, [])
+        line = self.db.one("SELECT * FROM sale_items WHERE sale_id=?", (result["id"],))
         self.assertEqual(line["promo_discount_percent"], 25)
         self.assertAlmostEqual(line["line_total"], 300)
         self.assertEqual(self.db.scalar("SELECT stock FROM products WHERE id=?", (self.product_id,)), 8)
@@ -141,11 +154,11 @@ class PromocionesUITest(ModuleWidgetTest):
 
         Precondiciones: Pantalla de promociones abierta.
         Pasos:
-        - Capturar porcentaje y fechas inválidas
-        - Guardar
+        - Intentar altas y ediciones con producto o porcentaje inválido
+        - Repetir con fechas inexistentes, formato distinto de AAAA-MM-DD o fin anterior al inicio
         Esperado:
         - Mensaje de validación
-        - Sin cambios en la tabla promotions
+        - Sin cambios en datos, selección ni listado de promociones ante fechas inválidas
         """
         invalid_values = (("", 20), ("abc", 20), (99999, 20), (self.product_id, -1), (self.product_id, 101), (self.product_id, "abc"))
         for editing in (False, True):
@@ -160,6 +173,50 @@ class PromocionesUITest(ModuleWidgetTest):
                     self.ui.save_promotion_ui()
                     self.error.assert_called_once()
                     self.assertEqual(database_state(self.db), original)
+
+    @tc("STS_PRM_02")
+    def test_fechas_invalidas_no_crean_ni_modifican_promociones(self):
+        invalid_dates = (
+            ("fecha", "2026-10-31"), ("2026-10-01", "fecha"),
+            ("2026-02-30", "2026-10-31"), ("2026-10-01", "2026-11-31"),
+            ("2025-02-29", "2026-10-31"), ("01/10/2026", "2026-10-31"),
+            ("20261001", "2026-10-31"), ("2026-10-01", "20261031"),
+            ("2026-10-31", "2026-10-01"),
+        )
+        for editing in (False, True):
+            if editing:
+                fill_promotion(self.ui, self.product_id)
+                self.ui.save_promotion_ui()
+            original = database_state(self.db)
+            selected = self.ui.selected_promotion_id
+            rows = self.ui.promotions_tree.get_children()
+            for start, end in invalid_dates:
+                with self.subTest(editing=editing, start=start, end=end):
+                    self.error.reset_mock()
+                    self.info.reset_mock()
+                    fill_promotion(self.ui, self.product_id)
+                    set_entry(self.ui.pr_start, start)
+                    set_entry(self.ui.pr_end, end)
+                    self.ui.save_promotion_ui()
+                    self.error.assert_called_once()
+                    self.info.assert_not_called()
+                    self.assertEqual(database_state(self.db), original)
+                    self.assertEqual(self.ui.selected_promotion_id, selected)
+                    self.assertEqual(self.ui.promotions_tree.get_children(), rows)
+
+    @tc("STS_PRM_01")
+    def test_promocion_admite_un_dia_fecha_bisiesta_y_fechas_predeterminadas(self):
+        for day in (today_text(), "2024-02-29", ""):
+            with self.subTest(day=day):
+                self.ui.clear_promotion_form()
+                fill_promotion(self.ui, self.product_id)
+                set_entry(self.ui.pr_start, day)
+                set_entry(self.ui.pr_end, day)
+                self.ui.save_promotion_ui()
+                self.error.assert_not_called()
+                row = promociones_repo.obtener_por_id(self.db, self.ui.selected_promotion_id)
+                expected = day or today_text()
+                self.assertEqual((row["start_date"], row["end_date"]), (expected, expected))
 
 
 class DevolucionesUITest(ModuleWidgetTest):
