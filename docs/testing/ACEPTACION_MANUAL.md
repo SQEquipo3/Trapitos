@@ -115,8 +115,8 @@ Copiar [REGISTRO_ACEPTACION.md](REGISTRO_ACEPTACION.md) por caso ejecutado en `d
 
 Antes de ejecutar, omitir los tres campos de resultado, persona y fecha. No llenar esos campos al preparar la sesión ni copiar la fecha planeada como fecha real. Un bloqueo se conserva como `Blocked`; un caso disponible sin ejecución permanece `Not executed`.
 
-Vincular los defectos únicamente con issues existentes que describan el problema. Si una observación no corresponde a ninguno, anotarla en la evidencia y dejar pendiente su revisión y trazabilidad, sin inventar un número ni crear un issue nuevo. El generador exige un defecto asociado para resultados fallidos; no declarar conformidad documental mientras esa asociación falte.
+Asociar cada resultado fallido con el issue que describe el defecto. Si esa relación falta, registrar la observación y el pendiente de trazabilidad en la evidencia. El generador exige un defecto asociado para aceptar resultados fallidos.
 
 Incorporar los registros a la rama, ejecutar el catálogo y revisar la nueva corrida de Tests. En el artefacto `entregables-qa`, comprobar los cinco casos en `Detailed status` y sus fichas en Test Plan y TC Design. Los resultados manuales se registran en `manuales.yml`, no en `reports/results.json`, que se regenera con pytest.
 
-La preparación del guion no completa #60 ni sustituye la revisión individual y entrega de [#61](https://github.com/SQEquipo3/Trapitos/issues/61). Mantener el PR en draft mientras falten las ejecuciones y decisiones señaladas.
+La ejecución con el cliente se registra en [#60](https://github.com/SQEquipo3/Trapitos/issues/60). La revisión individual y entrega de los archivos corresponde a [#61](https://github.com/SQEquipo3/Trapitos/issues/61).
