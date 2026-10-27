@@ -65,6 +65,9 @@ def pytest_runtest_logreport(report):
             outcome = "xpassed"
         else:
             outcome = report.outcome
+        # Un subtest fallido no debe quedar tapado por el «passed» final del test padre.
+        if _RESULTS.get(report.nodeid, {}).get("outcome") == "failed":
+            return
         _RESULTS[report.nodeid] = {"outcome": outcome,
                                    "reason": getattr(report, "wasxfail", "") or ""}
 

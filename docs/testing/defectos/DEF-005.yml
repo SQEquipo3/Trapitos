@@ -1,0 +1,14 @@
+id: DEF-005
+tc: ATS_SEG_01
+description: 'B-04: los permisos por rol de empleado no se aplican; el rol solo se muestra en la barra lateral'
+steps: '1. Crear un empleado con rol «Vendedor»
+
+  2. Iniciar sesión con ese empleado
+
+  3. Abrir Contactos → Empleados y crear o editar un empleado
+
+  4. El sistema lo permite (esperado: acceso denegado)'
+severity: 1- High
+state: Open
+found_by: QA
+assigned_to: Desarrollo (seguridad)
