@@ -1,21 +1,32 @@
 #!/usr/bin/env python3
 """Genera SW Test Plan, TC Design y Test Report (plantillas Excel del maestro) desde:
 
-    docs/testing/{meta.yml, tc/*.yml, defectos/*.yml}  +  reports/results.json (pytest)  +  reports/coverage.json (opcional)
+    tests/test_*.py      los TC automatizados: decorador @tc + docstring de cada prueba (tests/tc.py)
+    docs/testing/        meta.yml (equipo y proyecto) y manuales.yml (TC que no son código)
+    issues de GitHub     los bugs con label «bug» (plantilla «Defecto») -> hoja «Bug report»
+    reports/             results.json (pytest) y coverage.json (opcional)
 
 Uso:
     pytest --cov=mis_trapitos --cov-report=json:reports/coverage.json
     python tools/generar_documentos.py            # escribe en entregables/
+
+Los bugs se leen con GITHUB_TOKEN/GH_TOKEN o con la sesión de `gh auth login`.
 """
 from __future__ import annotations
 
 import argparse
+import ast
 import copy
 import datetime as dt
+import inspect
 import io
 import json
 import math
+import os
+import re
+import subprocess
 import sys
+import urllib.request
 from collections import Counter, OrderedDict
 from pathlib import Path
 
@@ -28,19 +39,181 @@ from openpyxl.worksheet.datavalidation import DataValidation
 ROOT = Path(__file__).resolve().parent.parent
 TPL = ROOT / "docs" / "testing" / "plantillas"
 TESTING = ROOT / "docs" / "testing"
+TESTS = ROOT / "tests"
+
+# --------------------------------------------------------------------------- TC desde el código
+SECCIONES = {"Precondiciones": "pre", "Pasos": "steps", "Esperado": "expected", "Comentarios": "comments"}
+_SECCION = re.compile(r"^(%s):\s*(.*)$" % "|".join(SECCIONES))
+
+
+def leer_docstring(texto):
+    """Docstring del TC -> objective, pre, steps, expected, comments (formato en tests/tc.py)."""
+    datos = {"objective": [], "pre": [], "steps": [], "expected": [], "comments": []}
+    actual = "objective"
+    for linea in inspect.cleandoc(texto or "").split("\n"):
+        m = _SECCION.match(linea.strip())
+        if m:
+            actual = SECCIONES[m.group(1)]
+            if m.group(2):
+                datos[actual].append(m.group(2))
+            continue
+        linea = linea.strip()
+        if actual in ("steps", "expected"):
+            if linea.startswith("- "):
+                datos[actual].append(linea[2:])
+            elif linea and datos[actual]:
+                datos[actual][-1] += " " + linea
+        elif linea:
+            datos[actual].append(linea)
+    for k in ("objective", "pre", "comments"):
+        datos[k] = " ".join(datos[k])
+    return datos
+
+
+def _decorador_tc(nodo):
+    for d in nodo.decorator_list:
+        if isinstance(d, ast.Call) and getattr(d.func, "id", getattr(d.func, "attr", None)) == "tc":
+            return d
+    return None
+
+
+def pruebas_del_codigo(tests: Path = TESTS):
+    """[(nodeid, nodo_ast, decorador @tc o None, decorador de su clase o None)] de cada prueba."""
+    pruebas = []
+    for f in sorted(tests.glob("test_*.py")):
+        rel = f"tests/{f.name}"
+        for n in ast.parse(f.read_text(encoding="utf-8")).body:
+            if isinstance(n, ast.FunctionDef) and n.name.startswith("test"):
+                pruebas.append((f"{rel}::{n.name}", n, _decorador_tc(n), None))
+            elif isinstance(n, ast.ClassDef):
+                deco_clase = _decorador_tc(n)
+                if deco_clase:
+                    pruebas.append((f"{rel}::{n.name}", n, deco_clase, None))
+                for s in n.body:
+                    if isinstance(s, ast.FunctionDef) and s.name.startswith("test"):
+                        pruebas.append((f"{rel}::{n.name}::{s.name}", s, _decorador_tc(s), deco_clase))
+    return pruebas
+
+
+def leer_tc_del_codigo(tests: Path = TESTS):
+    """Reúne los TC declarados con @tc. Regresa (casos, errores)."""
+    casos, errores = OrderedDict(), []
+    for nodeid, nodo, deco, deco_clase in pruebas_del_codigo(tests):
+        if deco is None:
+            continue
+        try:
+            tc_id = ast.literal_eval(deco.args[0])
+            kw = {k.arg: ast.literal_eval(k.value) for k in deco.keywords}
+        except (IndexError, ValueError):
+            errores.append(f"{nodeid}: @tc necesita el id como texto y argumentos literales")
+            continue
+        caso = casos.setdefault(tc_id, {"id": tc_id, "tests": []})
+        caso["tests"].append(nodeid)
+        if kw:
+            if "name" in caso:
+                errores.append(f"{tc_id}: los datos del TC están en dos pruebas ({caso['definido_en']} y {nodeid})")
+                continue
+            caso.update(level=kw.get("nivel"), module=kw.get("modulo"), reqs=list(kw.get("reqs", [])),
+                        name=kw.get("nombre"), definido_en=nodeid, **leer_docstring(ast.get_docstring(nodo)))
+    for caso in casos.values():
+        if "name" not in caso:
+            errores.append(f"{caso['id']}: ninguna prueba trae los datos (nivel, modulo, reqs, nombre)")
+            continue
+        faltan = [k for k in ("level", "module", "name", "reqs", "objective", "pre", "steps", "expected") if not caso.get(k)]
+        if faltan:
+            errores.append(f"{caso['id']} ({caso['definido_en']}): falta {', '.join(faltan)}")
+    return [c for c in casos.values() if "name" in c], errores
+
+
+def cargar_catalogo(base: Path = TESTING, tests: Path = TESTS):
+    """meta.yml + TC del código (@tc) + TC manuales (manuales.yml). Agrega 'errores' de consistencia."""
+    leer = lambda f: yaml.safe_load(f.read_text(encoding="utf-8"))
+    meta = leer(base / "meta.yml")
+    automaticos, errores = leer_tc_del_codigo(tests)
+    manuales = leer(base / "manuales.yml") or []
+    orden = list(meta["levels"])
+    for c in automaticos + manuales:
+        if c.get("level") not in orden:
+            errores.append(f"{c['id']}: nivel {c.get('level')!r} no está en meta.yml (levels)")
+            c["level"] = orden[0]
+    ids = [c["id"] for c in automaticos + manuales]
+    errores += [f"id duplicado: {i}" for i, n in Counter(ids).items() if n > 1]
+    cases = sorted(automaticos + manuales, key=lambda c: (orden.index(c["level"]), c["id"]))
+    return {"meta": meta, "cases": cases, "defects": [], "errores": errores}
+
+
+def coincide(nodeid, prefijo):
+    """El resultado de pytest pertenece a la prueba (incluye parámetros y métodos de una clase)."""
+    return nodeid == prefijo or nodeid.startswith(prefijo + "[") or nodeid.startswith(prefijo + "::")
+
+# --------------------------------------------------------------------------- bugs desde GitHub
+CAMPOS_BUG = {"TC que lo detectó": "tc", "Pasos para reproducir": "pasos", "Severidad": "severidad",
+              "Esperado vs. real": "esperado"}
+
+
+def token_github():
+    for var in ("GITHUB_TOKEN", "GH_TOKEN"):
+        if os.environ.get(var):
+            return os.environ[var]
+    try:
+        return subprocess.run(["gh", "auth", "token"], capture_output=True, text=True, check=True).stdout.strip() or None
+    except (OSError, subprocess.CalledProcessError):
+        return None
+
+
+def leer_formulario(cuerpo):
+    """Cuerpo de un issue creado con la plantilla «Defecto» -> {tc, pasos, severidad, esperado}."""
+    datos, actual = {}, None
+    for linea in (cuerpo or "").replace("\r\n", "\n").split("\n"):
+        if linea.startswith("### "):
+            actual = CAMPOS_BUG.get(linea[4:].strip())
+            continue
+        if actual:
+            datos[actual] = (datos.get(actual, "") + "\n" + linea).strip()
+    return {k: ("" if v == "_No response_" else v) for k, v in datos.items()}
+
+
+def defecto_desde_issue(issue, nombres):
+    f = leer_formulario(issue.get("body"))
+    nombre = lambda login: nombres.get(login, login)
+    pasos = f.get("pasos", "")
+    if f.get("esperado"):
+        pasos += f"\n\nEsperado vs. real:\n{f['esperado']}"
+    return {"id": f"#{issue['number']}", "tc": f.get("tc", "").strip() or "N/A",
+            "description": re.sub(r"^\s*(\[DEF\]|Bug:)\s*", "", issue["title"]),
+            "steps": pasos.strip() or "Ver el issue en GitHub.",
+            "severity": f.get("severidad") or "Sin clasificar",
+            "state": "Closed" if issue["state"] == "closed" else "Open",
+            "found_by": nombre(issue["user"]["login"]),
+            "assigned_to": ", ".join(nombre(a["login"]) for a in issue.get("assignees", [])) or "Sin asignar"}
+
+
+def cargar_bugs(meta, token):
+    """Issues con label «bug» del repo, ordenados por número."""
+    repo = os.environ.get("GITHUB_REPOSITORY") or meta["repo"]
+    issues, pagina = [], 1
+    while True:
+        req = urllib.request.Request(
+            f"https://api.github.com/repos/{repo}/issues?labels=bug&state=all&per_page=100&page={pagina}",
+            headers={"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"})
+        with urllib.request.urlopen(req, timeout=30) as r:
+            lote = json.load(r)
+        issues += [i for i in lote if "pull_request" not in i]
+        if len(lote) < 100:
+            break
+        pagina += 1
+    nombres = meta.get("nombres") or {}
+    return [defecto_desde_issue(i, nombres) for i in sorted(issues, key=lambda i: i["number"])]
 
 # --------------------------------------------------------------------------- datos
-def cargar_catalogo(base: Path = TESTING):
-    """meta.yml + una ficha por TC (tc/*.yml) + un archivo por defecto (defectos/*.yml)."""
-    leer = lambda f: yaml.safe_load(f.read_text(encoding="utf-8"))
-    orden = list(leer(base / "meta.yml")["levels"])
-    cases = sorted((leer(f) for f in (base / "tc").glob("*.yml")), key=lambda c: (orden.index(c["level"]), c["id"]))
-    return {"meta": leer(base / "meta.yml"), "cases": cases,
-            "defects": sorted((leer(f) for f in (base / "defectos").glob("*.yml")), key=lambda d: d["id"])}
-
-
-def cargar(results_path: Path, cov_path: Path):
+def cargar(results_path: Path, cov_path: Path, con_github=True):
     cat = cargar_catalogo()
+    if con_github:
+        token = token_github()
+        if not token:
+            raise SystemExit("Sin acceso a GitHub para leer los bugs: corre `gh auth login`, define GITHUB_TOKEN "
+                             "o usa --sin-github (el Bug report saldrá vacío).")
+        cat["defects"] = cargar_bugs(cat["meta"], token)
     results = json.loads(results_path.read_text(encoding="utf-8")) if results_path.exists() else {}
     cov = None
     if cov_path.exists():
@@ -56,8 +229,8 @@ def evaluar(cat, results, fecha_ejec):
     defectos = {d["id"]: d for d in cat.get("defects", [])}
     for c in cat["cases"]:
         c["method"] = "TA" if c.get("tests") else "Manual"
-        c["tester"] = testers[modulos.index(c["module"]) % len(testers)]
-        hits = [(k, v) for k, v in results.items() if any(k.startswith(p) for p in c.get("tests", []))]
+        c["tester"] = c.get("executed_by") or testers[modulos.index(c["module"]) % len(testers)]
+        hits = [(k, v) for k, v in results.items() if any(coincide(k, p) for p in c.get("tests", []))]
         c["hits"] = hits
         if c["method"] == "TA":
             if not hits:
@@ -70,16 +243,15 @@ def evaluar(cat, results, fecha_ejec):
         else:
             manual = c.get("manual_result")
             c["status"] = "BLOCKED" if c.get("blocked_by") else manual or "NOT_EXECUTED"
-            c["date"] = dt.date.fromisoformat(meta["planned_date"])
+            c["date"] = dt.date.fromisoformat(str(c.get("executed_on") or meta["planned_date"]))
         c["n_tests"] = len(hits)
-        c["defect"] = next((d for d in defectos.values() if d["tc"] == c["id"]), None)
+        propios = sorted((d for d in defectos.values() if d["tc"] == c["id"]), key=lambda d: d["state"] != "Open")
+        c["defect"] = propios[0] if propios else None
     return cat
 
 
-def validar(cat):
-    errs = []
-    ids = [c["id"] for c in cat["cases"]]
-    errs += [f"id duplicado: {i}" for i, n in Counter(ids).items() if n > 1]
+def validar(cat, con_github=True):
+    errs = list(cat.get("errores", []))
     for lv in cat["meta"]["levels"]:
         n = sum(c["level"] == lv for c in cat["cases"])
         if n < 10:
@@ -87,7 +259,7 @@ def validar(cat):
     cubiertos = {r for c in cat["cases"] for r in c["reqs"]}
     errs += [f"requisito sin TC: {r}" for r in cat["meta"]["requirements"] if r not in cubiertos]
     for c in cat["cases"]:
-        if c["status"] in ("FAILED", "BLOCKED") and not c["defect"] and not any(d["id"] == c.get("blocked_by") for d in cat["defects"]):
+        if con_github and c["status"] in ("FAILED", "BLOCKED") and not c["defect"] and not any(d["id"] == c.get("blocked_by") for d in cat["defects"]):
             errs.append(f"{c['id']} {c['status']} sin defecto registrado")
         if c["method"] == "TA" and not c["hits"]:
             errs.append(f"{c['id']}: ningún test de pytest coincide con {c['tests']} (¿corriste pytest?)")
@@ -252,15 +424,21 @@ def construir_plan(cat, k, fecha, out: Path, tpl: Path):
     wi = wb["intro"]
     for col, v in (("C", fecha.isoformat()), ("D", meta["department"]),
                    ("E", "v1.0 — Primera emisión: alcance, estrategia, matriz de trazabilidad y diseño de casos de prueba "
-                         f"({k['total']} TC en {len(meta['levels'])} niveles) generados desde docs/testing/.")):
+                         f"({k['total']} TC en {len(meta['levels'])} niveles) generados desde las pruebas de tests/ y los issues de GitHub.")):
         c = wi[f"{col}14"]
         c.value = v
         c.alignment = Alignment(wrap_text=True, vertical="top")
     wi.row_dimensions[14].height = 52
+    for fila, rev in enumerate(meta.get("revisiones") or [], start=15):   # revisión y aprobación en equipo
+        for col, v in (("C", str(rev["fecha"])), ("D", rev["quien"]), ("E", rev["descripcion"])):
+            c = wi[f"{col}{fila}"]
+            c.value = v
+            c.alignment = Alignment(wrap_text=True, vertical="top")
+        wi.row_dimensions[fila].height = 30
     wi["B6"].value = f"Proyecto: {meta['project_title']} (versión {meta['release']})"
     # ---- Matrix
     wm = wb["Matrix"]
-    wm["C1"].value = "SDD.md, SAD.md, tests/"
+    wm["C1"].value = "SDD.md, SAD.md, tests/ (@tc), docs/testing/manuales.yml"
     wm["C2"].value = f"{meta['release']} — Test Plan v1.0 ({fecha.isoformat()})"
     for rng in list(wm.merged_cells.ranges):
         if str(rng) == "B8:G8":
@@ -383,21 +561,29 @@ def construir_strategy(wb, cat, k, fecha):
         ("1. Objetivo", "Verificar que el sistema de punto de venta e inventario «Mis Trapitos» cumple RF-01…RF-26 y RNF-01 del SDD, "
                         "pasando de verificación manual a pruebas automatizadas repetibles en cada Pull Request.",
          "Historias de usuario #1, #4, #26 y #27 del Product Backlog."),
-        ("2. Alcance (incluido)", "Capa de datos (Database, repositorios), reglas de negocio de ventas/devoluciones/promociones, 12 reportes (RF-15…RF-26), "
-                                  "interfaz Tkinter (pantallas, formularios, login) bajo Xvfb y escenarios de aceptación VD-01…VD-07.",
+        ("2. Alcance (incluido)", "Capa de datos (conexión y repositorios), capa de servicios (reglas de ventas, devoluciones y cancelaciones), "
+                                  "promociones, 12 reportes (RF-15…RF-26), interfaz Tkinter (pantallas, formularios, login) bajo Xvfb, "
+                                  "escenarios de aceptación VD-01…VD-09 y conformidad con estándares (ISO 8601, RFC 4180, FIPS 180-4, "
+                                  "integridad SQLite) y con los contratos del SDD.",
          "Todas las funcionalidades planteadas desde el inicio del proyecto: ver matriz de trazabilidad abajo."),
         ("3. Fuera de alcance", "Servicio LAN / sincronización entre terminales (B-01), autorización por rol (B-04), migraciones versionadas (B-08).",
          "Quedan registradas como brechas; los TC correspondientes están Bloqueados o Pendientes y con defecto asociado."),
         ("4. Niveles de prueba", "\n".join(f"{v} ({kk}): {sum(c['level'] == kk for c in cat['cases'])} TC" for kk, v in meta["levels"].items()),
-         "Mínimo exigido: 10 TC por nivel (verificado automáticamente en tests/test_catalogo.py)."),
-        ("5. Enfoque", "Automatizado (TA) con pytest para unitarias/integración/sistema/aceptación reproducibles; Manual para lo que depende de personas o varias máquinas. "
+         "Mínimo exigido: 10 TC por nivel (verificado automáticamente en tests/test_catalogo.py). Sistema incluye pruebas "
+         "funcionales, de regresión, de carga (STS_CAR) y de recuperación (STS_REC); Aceptación incluye los TC manuales "
+         "que ejecuta el cliente."),
+        ("5. Enfoque", "Automatizado (TA) con pytest para todo lo reproducible; Manual para lo que depende de personas (el cliente) o de varias máquinas. "
+                       "Cada TC automatizado se declara en su propia prueba con @tc y su docstring; los manuales en docs/testing/manuales.yml. "
                        "Cada prueba usa una base SQLite temporal (load_examples=False) para no tocar mis_trapitos.db.",
-         "El Test Report se genera de los resultados reales de pytest; un TC manual sin ejecutar se reporta como «Not executed»."),
+         "El CI genera estos documentos en cada PR con los resultados reales de pytest; un TC manual sin ejecutar se reporta como «Not executed»."),
         ("6. Entorno", meta["environment"].strip(), "Dependencias: requirements.txt / requirements-dev.txt."),
         ("7. Criterios de entrada", "Rama con refactor modular integrada; pytest instalable; BD temporal disponible.", ""),
         ("8. Criterios de salida", "100 % de TC automatizados ejecutados; 0 defectos Críticos abiertos que afecten RF; todos los RF con ≥ 1 TC; "
                                    "cobertura de líneas reportada; defectos abiertos justificados en el Bug report.", ""),
-        ("9. Herramientas", "pytest, pytest-cov, GitHub Actions (tests.yml en cada PR), Grafana/Prometheus (seguimiento de métricas), tools/generar_documentos.py.", ""),
+        ("9. Herramientas", "pytest, pytest-cov, GitHub Actions (tests.yml en cada PR), Grafana (seguimiento de métricas), tools/generar_documentos.py.", ""),
+        ("9b. Gestión de defectos", "Cada defecto es un issue de GitHub con la plantilla «Defecto» (label bug): TC que lo detectó, pasos, severidad y "
+                                    "esperado vs. real. El Bug report se llena desde esos issues; quien lo abre es «Found by» y el assignee «Assigned to».",
+         "Un TC Failed o Blocked debe tener su issue de bug; el generador lo verifica."),
         ("10. Roles", "Responsable de calidad: ejecuta suite y publica reporte. Testers: " + ", ".join(meta["testers"]) + ". Desarrollo: corrige defectos.", ""),
         ("11. Riesgos", "R1 Sin sincronización LAN (B-01) → RNF-01 no verificable entre terminales.\nR2 Reglas de reportes ambiguas (B-05).\n"
                         "R3 Pruebas de interfaz dependientes de Xvfb/Tk.\nR4 Fechas dependientes de la hora del sistema.",
@@ -538,10 +724,11 @@ def main(argv=None):
     ap.add_argument("--results", default=str(ROOT / "reports" / "results.json"))
     ap.add_argument("--coverage", default=str(ROOT / "reports" / "coverage.json"))
     ap.add_argument("--out", default=str(ROOT / "entregables"))
+    ap.add_argument("--sin-github", action="store_true", help="no leer los bugs de GitHub (Bug report vacío)")
     a = ap.parse_args(argv)
-    cat, results, cov, fecha = cargar(Path(a.results), Path(a.coverage))
+    cat, results, cov, fecha = cargar(Path(a.results), Path(a.coverage), con_github=not a.sin_github)
     evaluar(cat, results, fecha)
-    errs = validar(cat)
+    errs = validar(cat, con_github=not a.sin_github)
     if errs:
         print("ERRORES DE CONSISTENCIA:\n  - " + "\n  - ".join(errs), file=sys.stderr)
         return 1

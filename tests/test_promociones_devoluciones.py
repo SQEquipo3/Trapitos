@@ -16,6 +16,7 @@ from mis_trapitos.services import ventas as ventas_srv
 from mis_trapitos.data.repositories import empleados as empleados_repo
 from mis_trapitos.data.repositories import productos as productos_repo
 from mis_trapitos.data.repositories import promociones as promociones_repo
+from tests.tc import tc
 
 
 def set_entry(entry, value):
@@ -84,7 +85,21 @@ class PromocionesUITest(ModuleWidgetTest):
         super().setUp()
         self.ui = PromocionesUI(self.root, self.db)
 
+    @tc("STS_PRM_01", nivel="STS", modulo="ventas", reqs=["RF-09", "RF-10"],
+        nombre="Promociones: alta, edición y descuento aplicado en venta")
     def test_alta_edicion_limpieza_y_descuento_aplicado_en_venta(self):
+        """La pantalla de promociones crea y edita ofertas y la venta usa el descuento.
+
+        Precondiciones: Producto registrado.
+        Pasos:
+        - Crear promoción
+        - Editarla y limpiar
+        - Vender el producto
+        - Reabrir sesión
+        Esperado:
+        - El descuento aparece en la venta
+        - La sesión reabierta conserva promociones y reinicia selección
+        """
         fill_promotion(self.ui, self.product_id)
         self.ui.save_promotion_ui()
         self.error.assert_not_called()
@@ -119,7 +134,19 @@ class PromocionesUITest(ModuleWidgetTest):
         self.assertEqual(self.db.scalar("SELECT stock FROM products WHERE id=?", (self.product_id,)), 8)
         self.error.assert_not_called()
 
+    @tc("STS_PRM_02", nivel="STS", modulo="ventas", reqs=["RF-09"],
+        nombre="Promociones con datos inválidos no se guardan")
     def test_datos_invalidos_no_crean_ni_modifican_promociones(self):
+        """Porcentaje o fechas inválidas no crean ni modifican promociones.
+
+        Precondiciones: Pantalla de promociones abierta.
+        Pasos:
+        - Capturar porcentaje y fechas inválidas
+        - Guardar
+        Esperado:
+        - Mensaje de validación
+        - Sin cambios en la tabla promotions
+        """
         invalid_values = (("", 20), ("abc", 20), (99999, 20), (self.product_id, -1), (self.product_id, 101), (self.product_id, "abc"))
         for editing in (False, True):
             if editing:
@@ -156,7 +183,18 @@ class DevolucionesUITest(ModuleWidgetTest):
         ):
             set_entry(entry, value)
 
+    @tc("STS_DEV_01", nivel="STS", modulo="ventas", reqs=["RF-05"],
+        nombre="Devoluciones parciales y cancelación reponen solo lo pendiente")
     def test_devoluciones_parciales_y_cancelacion_reponen_solo_lo_pendiente(self):
+        """Flujo de devoluciones por interfaz.
+
+        Precondiciones: Venta registrada.
+        Pasos:
+        - Devolver parcialmente dos veces
+        - Cancelar la venta
+        Esperado:
+        - Stock final correcto sin doble reposición
+        """
         self.assertEqual(self.stock(), 5)
         self.updated.assert_not_called()
         self.fill_return(quantity=2)
@@ -189,7 +227,19 @@ class DevolucionesUITest(ModuleWidgetTest):
         self.updated.assert_not_called()
         self.assertEqual(database_state(self.db), original)
 
+    @tc("STS_DEV_02", nivel="STS", modulo="ventas", reqs=["RF-05"],
+        nombre="Devoluciones y cancelaciones inválidas no alteran datos")
     def test_devoluciones_invalidas_no_alteran_datos_ni_notifican_inventario(self):
+        """Operaciones inválidas no cambian datos ni disparan notificaciones al inventario.
+
+        Precondiciones: Ventas registradas.
+        Pasos:
+        - Devolver cantidad inválida
+        - Cancelar venta ya cancelada o inexistente
+        Esperado:
+        - Mensaje de error
+        - Datos intactos y sin notificación
+        """
         unsold_id = add_product(self.db, "OTRA-L")
         original = database_state(self.db)
         invalid_values = (
@@ -209,6 +259,7 @@ class DevolucionesUITest(ModuleWidgetTest):
                 self.assertEqual(database_state(self.db), original)
                 self.assertEqual(len(self.ui.returns_tree.get_children()), 0)
 
+    @tc("STS_DEV_02")
     def test_cancelaciones_invalidas_no_alteran_datos_ni_notifican_inventario(self):
         original = database_state(self.db)
         for sale_id in ("", "abc", 99999):
@@ -223,6 +274,7 @@ class DevolucionesUITest(ModuleWidgetTest):
                 self.assertEqual(len(self.ui.cancellations_tree.get_children()), 0)
 
 
+@tc("STS_PRM_01")
 class PromocionesSessionTest(TemporaryWorkflowTest):
     def test_reabrir_sesion_conserva_promociones_y_reinicia_seleccion(self):
         app = App(db_path=self.path)

@@ -14,6 +14,7 @@ from mis_trapitos.data.repositories import empleados as empleados_repo
 from mis_trapitos.data.repositories import productos as productos_repo
 from mis_trapitos.ui.app import App
 from utils import today_text
+from tests.tc import tc
 
 
 SCREENS = (
@@ -201,7 +202,18 @@ class LayoutTest(unittest.TestCase):
                 self.fail(f"El escenario excedió 90 segundos.\n{output}")
         self.assertEqual(process.returncode, 0, output)
 
+    @tc("STS_UI_01", nivel="STS", modulo="interfaz", reqs=["RF-06", "RF-01"],
+        nombre="Nueve pantallas accesibles en dos tamaños y escalas")
     def test_nueve_pantallas_accesibles_en_dos_tamanos_y_escalas(self):
+        """Todas las pantallas se pueden abrir y sus controles son visibles en distintas
+        resoluciones.
+
+        Precondiciones: Aplicación completa.
+        Pasos:
+        - Recorrer las nueve pantallas en dos tamaños y escalas
+        Esperado:
+        - Sin controles recortados ni errores
+        """
         for scale in (96 / 72, 144 / 72):
             for size in ((1060, 680), (1360, 840)):
                 with self.subTest(scale=scale, size=size):
@@ -234,7 +246,18 @@ class LayoutTest(unittest.TestCase):
                     for tree in tables:
                         self.assert_table_accessible(app, tree)
 
+    @tc("STS_UI_02", nivel="STS", modulo="interfaz", reqs=["RF-06"],
+        nombre="Redimensionar y navegar conserva captura, selección y carrito")
     def test_redimensionar_y_navegar_conserva_captura_seleccion_y_carrito(self):
+        """El estado de captura sobrevive a cambios de tamaño y navegación.
+
+        Precondiciones: Carrito con productos.
+        Pasos:
+        - Redimensionar la ventana
+        - Cambiar de pantalla y volver
+        Esperado:
+        - Captura, selección y carrito intactos
+        """
         for scale in (96 / 72, 144 / 72):
             with self.subTest(scale=scale):
                 self.run_scenario("resize_scenario", scale, (1360, 840))

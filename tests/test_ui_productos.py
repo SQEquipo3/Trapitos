@@ -18,6 +18,7 @@ from mis_trapitos.data.database import Database
 from mis_trapitos.ui import app as application
 from mis_trapitos.ui import productos as ui_productos
 from mis_trapitos.data.repositories import empleados as empleados_repo
+from tests.tc import tc
 
 
 def set_entry(entry, value):
@@ -96,7 +97,20 @@ class ProductosUITest(TemporaryInventoryTest):
         self.error.assert_not_called()
         return self.ui.selected_product_id
 
+    @tc("STS_PRO_01", nivel="STS", modulo="productos", reqs=["RF-01", "RF-02"],
+        nombre="Alta y edición de productos desde la interfaz respetan variantes")
     def test_alta_y_edicion_respetan_existencias_de_cada_variante(self):
+        """El formulario de productos guarda existencias por variante y rechaza códigos duplicados.
+
+        Precondiciones: Módulo de productos abierto.
+        Pasos:
+        - Capturar y guardar variantes
+        - Editarlas
+        - Intentar código duplicado
+        Esperado:
+        - Cada variante conserva su stock
+        - No se crea otra variante duplicada
+        """
         first_id = self.add_product()
         self.ui.clear_product_form()
         second_id = self.add_product(
@@ -126,7 +140,19 @@ class ProductosUITest(TemporaryInventoryTest):
         self.assertEqual(adjustment["quantity"], 2)
         self.error.assert_not_called()
 
+    @tc("STS_PRO_02", nivel="STS", modulo="productos", reqs=["RF-01", "RF-03"],
+        nombre="Validaciones del formulario no modifican datos")
     def test_validaciones_no_modifican_producto_ni_movimientos(self):
+        """Datos inválidos o edición sin selección no alteran productos ni movimientos.
+
+        Precondiciones: Producto existente.
+        Pasos:
+        - Capturar datos inválidos y guardar
+        - Guardar edición sin seleccionar producto
+        Esperado:
+        - Mensaje de error
+        - Sin cambios en products ni inventory_movements
+        """
         product_id = self.add_product()
         original = dict(self.db.one("SELECT * FROM products WHERE id=?", (product_id,)))
         movements = self.db.scalar("SELECT COUNT(*) FROM inventory_movements")
@@ -150,6 +176,7 @@ class ProductosUITest(TemporaryInventoryTest):
                 self.assertEqual(self.db.scalar("SELECT COUNT(*) FROM inventory_movements"),
                                  movements)
 
+    @tc("STS_PRO_01")
     def test_codigo_duplicado_no_crea_otra_variante(self):
         self.add_product()
         fill_product(self.ui, p_size="L", p_color="Roja")
@@ -160,13 +187,25 @@ class ProductosUITest(TemporaryInventoryTest):
         row = inventory_rows(self.ui)["BLUSA-M-AZUL"]
         self.assertEqual((row["talla"], row["color"]), ("M", "Azul"))
 
+    @tc("STS_PRO_02")
     def test_edicion_sin_seleccion_no_guarda_producto(self):
         fill_product(self.ui)
         self.ui.edit_product_ui()
         self.error.assert_called_once()
         self.assertEqual(self.db.scalar("SELECT COUNT(*) FROM products"), 0)
 
+    @tc("STS_PRO_04", nivel="STS", modulo="productos", reqs=["RF-03"],
+        nombre="Exportación del inventario a CSV")
     def test_exportacion_csv_conserva_variantes_y_texto(self):
+        """El CSV conserva variantes y caracteres especiales.
+
+        Precondiciones: Inventario con variantes.
+        Pasos:
+        - Exportar a CSV
+        - Leer el archivo
+        Esperado:
+        - Todas las variantes presentes y texto íntegro
+        """
         self.add_product(p_name="Blusa, edición especial")
         self.add_product(p_code="BLUSA-L-ROJA", p_size="L", p_color="Roja", p_stock=6)
         output = self.directory / "inventario.csv"
@@ -179,7 +218,21 @@ class ProductosUITest(TemporaryInventoryTest):
         self.assertEqual(rows["BLUSA-L-ROJA"]["stock"], "6")
         self.assertEqual(rows["BLUSA-L-ROJA"]["talla"], "L")
 
+    @tc("STS_PRO_03", nivel="STS", modulo="productos", reqs=["RF-01"],
+        nombre="Imagen de producto: copia, recuperación y archivo inexistente")
     def test_imagen_se_copia_guarda_y_recupera_al_seleccionar(self):
+        """La imagen se copia, se guarda y se recupera; una ruta inexistente no rompe el
+        formulario.
+
+        Precondiciones: Imagen de prueba temporal.
+        Pasos:
+        - Seleccionar imagen y guardar
+        - Reseleccionar producto
+        - Usar ruta inexistente
+        Esperado:
+        - Imagen recuperada al seleccionar
+        - Se muestra estado de error sin excepción
+        """
         source = self.directory / "blusa azul.png"
         Image.new("RGB", (320, 400), "blue").save(source)
         destination = self.directory / "imagenes"
@@ -206,12 +259,14 @@ class ProductosUITest(TemporaryInventoryTest):
         self.assertIsNotNone(self.ui.product_photo_ref)
         self.error.assert_not_called()
 
+    @tc("STS_PRO_03")
     def test_imagen_inexistente_muestra_estado_sin_romper_formulario(self):
         self.add_product(p_image=str(self.directory / "inexistente.png"))
         self.assertIsNone(self.ui.product_photo_ref)
         self.assertEqual(self.ui.product_image_label.cget("text"), "No se pudo mostrar la foto")
         self.assertEqual(len(inventory_rows(self.ui)), 1)
 
+    @tc("STS_PRO_05")
     def test_otro_componente_puede_recargar_el_inventario(self):
         product_id = self.add_product()
         self.db.execute("UPDATE products SET stock=4 WHERE id=?", (product_id,))
@@ -222,6 +277,7 @@ class ProductosUITest(TemporaryInventoryTest):
         self.assertEqual(int(inventory_rows(self.ui)["BLUSA-M-AZUL"]["stock"]), 4)
         self.assertIsNone(self.ui.selected_product_id)
 
+    @tc("STS_PRO_05")
     def test_refrescar_sin_cambio_externo_conserva_edicion_pendiente(self):
         self.add_product()
         select_product(self.ui, "BLUSA-M-AZUL")
@@ -234,7 +290,22 @@ class ProductosUITest(TemporaryInventoryTest):
         self.assertEqual(self.ui.p_stock.get(), "14")
         self.assertEqual(int(inventory_rows(self.ui)["BLUSA-M-AZUL"]["stock"]), 10)
 
+    @tc("STS_PRO_05", nivel="STS", modulo="productos", reqs=["RNF-01"],
+        nombre="Refresco y selección en la tabla de inventario")
     def test_limpiar_no_restaura_seleccion_por_eventos_pendientes(self):
+        """El inventario se actualiza cuando otro componente cambia datos sin perder la edición
+        pendiente.
+
+        Precondiciones: Módulo de productos abierto.
+        Pasos:
+        - Limpiar formulario
+        - Recargar desde otro componente
+        - Refrescar sin cambios externos
+        Esperado:
+        - No se restaura la selección
+        - Se ven datos nuevos
+        - La edición pendiente se conserva
+        """
         self.add_product()
         select_product(self.ui, "BLUSA-M-AZUL")
         self.ui.clear_product_form()
@@ -263,7 +334,20 @@ class ProductosAppIntegrationTest(TemporaryInventoryTest):
         self.assertEqual(self.db.scalar("SELECT stock FROM products WHERE code=?", (code,)), expected)
         self.assertEqual(int(inventory_rows(self.ui)[code]["stock"]), expected)
 
+    @tc("STS_PRO_06", nivel="STS", modulo="productos", reqs=["RF-04", "RNF-01"],
+        nombre="Venta, devolución y cancelación actualizan el inventario sin recarga manual")
     def test_venta_devolucion_y_cancelacion_actualizan_inventario_sin_recarga_manual(self):
+        """Flujo extremo a extremo entre módulos de ventas, devoluciones e inventario.
+
+        Precondiciones: Aplicación completa con un producto.
+        Pasos:
+        - Vender
+        - Devolver
+        - Cancelar
+        - Observar la tabla de inventario
+        Esperado:
+        - La tabla refleja cada cambio sin recargar
+        """
         fill_product(self.ui)
         self.ui.add_product_ui()
         product_id = self.ui.selected_product_id
@@ -312,7 +396,19 @@ class ProductosAppIntegrationTest(TemporaryInventoryTest):
         self.assertEqual(self.db.scalar("SELECT status FROM sales WHERE id=?", (sale_id,)), "CANCELADA")
         self.assertEqual(len(self.app.devoluciones_ui.cancellations_tree.get_children()), 1)
 
+    @tc("STS_PRO_07", nivel="STS", modulo="productos", reqs=["RNF-01"],
+        nombre="Reabrir sesión recrea el módulo y conserva inventario")
     def test_reabrir_sesion_recrea_modulo_y_conserva_inventario(self):
+        """Tras cerrar y reabrir sesión el inventario persiste.
+
+        Precondiciones: Aplicación iniciada.
+        Pasos:
+        - Cerrar sesión
+        - Volver a entrar
+        - Abrir inventario
+        Esperado:
+        - Los productos siguen presentes
+        """
         fill_product(self.ui)
         self.ui.add_product_ui()
         old_ui = self.ui

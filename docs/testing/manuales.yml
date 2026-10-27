@@ -1,0 +1,84 @@
+# TC manuales: los ejecuta una persona (el cliente en aceptación) o dependen de varias máquinas.
+# Al ejecutarlo, llena manual_result (PASSED o FAILED), executed_by y executed_on (AAAA-MM-DD).
+# Si no se puede ejecutar por un bug, blocked_by: "#<número del issue con label bug>".
+# Los TC automatizados NO van aquí: viven en tests/ con el decorador @tc (ver tests/tc.py).
+- id: ATS_INS_01
+  level: ATS
+  module: interfaz
+  name: Instalación y arranque en equipo limpio sin internet
+  reqs:
+  - RNF-01
+  objective: La aplicación se instala desde requirements.txt y arranca en un equipo sin conexión.
+  pre: Equipo limpio con Python 3.12.
+  steps:
+  - Instalar dependencias desde un wheelhouse local
+  - Ejecutar python main.py
+  - Iniciar sesión
+  expected:
+  - Aplicación operativa sin acceso a internet
+
+- id: ATS_UX_01
+  level: ATS
+  module: interfaz
+  name: Recorrido de usabilidad con la dueña de la tienda
+  reqs:
+  - RF-06
+  - RF-01
+  objective: Una persona no técnica registra un producto y una venta sin ayuda.
+  pre: Aplicación instalada con datos de ejemplo.
+  steps:
+  - Pedir que registre un producto
+  - Pedir que venda dos prendas con promoción
+  - Anotar dudas y errores
+  expected:
+  - Completa ambas tareas sin asistencia en < 5 min
+
+- id: ATS_SEG_01
+  level: ATS
+  module: interfaz
+  name: Permisos por rol de empleado (brecha B-04)
+  reqs:
+  - SEG-01
+  blocked_by: '#57'
+  objective: Un empleado con rol Vendedor no debe poder administrar empleados.
+  pre: Usuarios Administrador y Vendedor.
+  steps:
+  - Entrar como Vendedor
+  - Intentar abrir la gestión de empleados
+  expected:
+  - Acceso denegado
+  comments: 'Brecha B-04: el rol aún no tiene autorización efectiva.'
+
+- id: ATS_VD_08
+  level: ATS
+  module: productos
+  name: VD-08 Consistencia de inventario entre dos terminales (LAN)
+  reqs:
+  - RNF-01
+  blocked_by: '#56'
+  objective: Verificar que una venta en la terminal A se refleja en la terminal B en ≤ 5 s.
+  pre: Dos equipos en la misma red local con la aplicación; brecha B-01 (aún sin servicio LAN).
+  steps:
+  - Abrir inventario en A y B
+  - Vender en A
+  - Medir el tiempo hasta que B muestra el stock nuevo
+  expected:
+  - B muestra el stock actualizado en ≤ 5 s
+  comments: 'Bloqueado por la brecha B-01 del SDD: hoy no existe sincronización entre instancias.'
+
+- id: ATS_VD_09
+  level: ATS
+  module: ventas
+  name: VD-09 Dos ventas simultáneas del último artículo
+  reqs:
+  - RNF-01
+  - RF-04
+  blocked_by: '#56'
+  objective: Solo una de dos ventas simultáneas del último artículo debe concretarse.
+  pre: Producto con stock 1 y dos terminales.
+  steps:
+  - Capturar la venta en A y B
+  - Confirmar casi al mismo tiempo
+  expected:
+  - Una venta se registra y la otra se rechaza por stock insuficiente
+  comments: Requiere dos instancias (B-01).

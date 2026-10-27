@@ -65,6 +65,9 @@ def pytest_runtest_logreport(report):
             outcome = "xpassed"
         else:
             outcome = report.outcome
+        # Una subprueba fallida llega antes que el resultado «passed» de su prueba: el fallo no se sobrescribe
+        if _RESULTS.get(report.nodeid, {}).get("outcome") in ("failed", "error"):
+            return
         _RESULTS[report.nodeid] = {"outcome": outcome,
                                    "reason": getattr(report, "wasxfail", "") or ""}
 
