@@ -9,13 +9,19 @@
   reqs:
   - RNF-01
   objective: La aplicación se instala desde requirements.txt y arranca en un equipo sin conexión.
-  pre: Equipo limpio con Python 3.12.
+  pre: Equipo limpio con Python 3.12 y Tkinter; copia descartable del código sin BD previa y wheelhouse preparado para el mismo sistema y arquitectura. Ver ACEPTACION_MANUAL.md.
   steps:
-  - Instalar dependencias desde un wheelhouse local
-  - Ejecutar python main.py
-  - Iniciar sesión
+  - Registrar versión del código, sistema operativo y Python; desconectar el acceso a internet
+  - Crear un entorno virtual e instalar requirements.txt con --no-index desde el wheelhouse local
+  - Verificar dependencias con pip check y disponibilidad de Tkinter
+  - Ejecutar python main.py con el Python del entorno virtual desde la copia descartable
+  - Iniciar sesión con la cuenta de demostración y abrir Productos
+  - Cerrar y volver a abrir la aplicación, manteniendo el equipo sin internet
   expected:
-  - Aplicación operativa sin acceso a internet
+  - Instalación sin descargas de internet ni dependencias faltantes
+  - Inicio de sesión y pantalla Productos operativos en ambos arranques
+  - La BD se crea en la copia de prueba, sin usar datos de operación
+  comments: 'Pendiente de ejecución en equipo limpio. El arranque normal carga ejemplos; no acredita load_examples=False. Conservar versión, registro de instalación y evidencia según ACEPTACION_MANUAL.md.'
 
 - id: ATS_UX_01
   level: ATS
@@ -25,13 +31,18 @@
   - RF-06
   - RF-01
   objective: Una persona no técnica registra un producto y una venta sin ayuda.
-  pre: Aplicación instalada con datos de ejemplo.
+  pre: Copia descartable, cliente identificado y sesión iniciada. Preparar ACEP-PROMO-01 con precio 200, stock 10 y promoción vigente de 25%; código ACEP-NUEVO-01 aún inexistente. Ver ACEPTACION_MANUAL.md.
   steps:
-  - Pedir que registre un producto
-  - Pedir que venda dos prendas con promoción
-  - Anotar dudas y errores
+  - Entregar al cliente la tarjeta de tareas e iniciar el cronómetro antes de su primera acción
+  - Pedir que registre ACEP-NUEVO-01 con los datos de la tarjeta
+  - Pedir que venda dos unidades de ACEP-PROMO-01 en efectivo, sin descuento general
+  - Detener el cronómetro al mostrarse el ticket; registrar dudas, errores y cualquier asistencia
+  - Comprobar el producto nuevo, el ticket y el stock final
   expected:
-  - Completa ambas tareas sin asistencia en < 5 min
+  - Completa ambas tareas sin asistencia en menos de 300 segundos
+  - ACEP-NUEVO-01 queda registrado con stock 5
+  - La venta aplica 25% de promoción y totaliza 300; ACEP-PROMO-01 queda con stock 8
+  comments: 'Pendiente de ejecución con el cliente (#60). Guardar duración, asistencia y evidencias; las pruebas automatizadas no sustituyen este recorrido.'
 
 - id: ATS_SEG_01
   level: ATS
@@ -57,14 +68,15 @@
   - RNF-01
   blocked_by: '#56'
   objective: Verificar que una venta en la terminal A se refleja en la terminal B en ≤ 5 s.
-  pre: Dos equipos en la misma red local con la aplicación; brecha B-01 (aún sin servicio LAN).
+  pre: Corrección #56 disponible y verificada; dos terminales en la misma LAN conectadas al mismo servicio y datos de prueba. Producto ACEP-LAN-01 con stock 10 en ambas. Ver ACEPTACION_MANUAL.md.
   steps:
-  - Abrir inventario en A y B
-  - Vender en A
-  - Medir el tiempo hasta que B muestra el stock nuevo
+  - Identificar la versión y las terminales A y B; comprobar stock 10 en ambas
+  - Mantener abierto el inventario de B y vender una unidad de ACEP-LAN-01 en A
+  - Medir desde la confirmación de venta hasta que B muestra el stock nuevo, sin recarga manual
+  - Registrar duración y stock de ambas terminales
   expected:
-  - B muestra el stock actualizado en ≤ 5 s
-  comments: 'Bloqueado por la brecha B-01 del SDD: hoy no existe sincronización entre instancias.'
+  - Ambas terminales muestran stock 9; B se actualiza en un máximo de 5 segundos
+  comments: 'Bloqueado por #56. No simular la sincronización copiando archivos SQLite; conservar evidencia de ambas terminales cuando el servicio LAN esté disponible.'
 
 - id: ATS_VD_09
   level: ATS
@@ -75,10 +87,12 @@
   - RF-04
   blocked_by: '#56'
   objective: Solo una de dos ventas simultáneas del último artículo debe concretarse.
-  pre: Producto con stock 1 y dos terminales.
+  pre: Corrección #56 disponible y verificada; dos terminales conectadas al mismo servicio y datos de prueba. Producto ACEP-ULTIMO-01 con stock 1 y sin ventas previas de ese producto.
   steps:
-  - Capturar la venta en A y B
-  - Confirmar casi al mismo tiempo
+  - Agregar una unidad de ACEP-ULTIMO-01 al carrito de A y al de B antes de confirmar
+  - Confirmar las dos ventas a una señal acordada y registrar las respuestas
+  - Revisar tickets, ventas registradas, movimiento de salida y stock final
   expected:
   - Una venta se registra y la otra se rechaza por stock insuficiente
-  comments: Requiere dos instancias (B-01).
+  - Solo se descuenta una unidad; el stock final es 0 en ambas terminales y nunca es negativo
+  comments: 'Bloqueado por #56. Registrar qué terminal concretó la venta y la evidencia de la otra respuesta; ver ACEPTACION_MANUAL.md.'
