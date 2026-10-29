@@ -180,7 +180,7 @@ def test_venta_es_atomica_si_falla_un_producto(db, empleado, make_product):
     Precondiciones: Dos productos: stock 5 y stock 1.
     Pasos:
     - Vender 2 del primero y 9 del segundo
-    - Vender 2 piezas simulando un error al guardar la partida
+    - Vender 2 piezas provocando un error controlado al guardar la partida
     Esperado:
     - ValueError
     - Stock del primero sigue en 5 y no existe venta

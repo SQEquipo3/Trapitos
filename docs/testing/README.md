@@ -68,6 +68,8 @@ tools/crear_issues.py        crea las historias de prueba en GitHub (historias.y
 
 Los archivos generados se llaman `SW_Test_Plan_<Team>_<Proyecto>.xlsx`, `TC_Design_…xlsx` y `SWT_summary_report_…xlsx`, y se guardan con las gráficas en `entregables/`.
 
+La entrega de [#61](https://github.com/SQEquipo3/Trapitos/issues/61) comprende los tres Excel. La evidencia de cada ejecución manual se guarda en `docs/testing/evidencias/`, como indica el [guion de aceptación manual](ACEPTACION_MANUAL.md).
+
 ## Generarlos en tu computadora
 
 ```bash
