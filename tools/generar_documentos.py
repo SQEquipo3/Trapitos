@@ -306,7 +306,7 @@ def graficas(cat, k, cov, outdir: Path):
         ax.set_title(title, fontsize=11, loc="left", fontweight="bold")
         fig.tight_layout()
         p = outdir / f"{name}.png"
-        fig.savefig(p)
+        fig.savefig(p, bbox_inches="tight", pad_inches=0.16)
         plt.close(fig)
         pngs[name] = p
 
@@ -332,7 +332,7 @@ def graficas(cat, k, cov, outdir: Path):
     ax.spines[["top", "right"]].set_visible(False)
     fig.tight_layout()
     p = outdir / "bar_estado_modulo.png"
-    fig.savefig(p)
+    fig.savefig(p, bbox_inches="tight", pad_inches=0.16)
     plt.close(fig)
     pngs["bar_estado_modulo"] = p
     if cov:
@@ -348,7 +348,7 @@ def graficas(cat, k, cov, outdir: Path):
         ax.spines[["top", "right"]].set_visible(False)
         fig.tight_layout()
         p = outdir / "bar_cobertura.png"
-        fig.savefig(p)
+        fig.savefig(p, bbox_inches="tight", pad_inches=0.16)
         plt.close(fig)
         pngs["bar_cobertura"] = p
     return pngs
@@ -418,6 +418,8 @@ def poner(ws, ref, valor, wrap=True, h=None):
 def construir_plan(cat, k, fecha, out: Path, tpl: Path):
     meta = cat["meta"]
     wb = openpyxl.load_workbook(tpl)
+    if meta.get("document_author"):
+        wb.properties.creator = wb.properties.lastModifiedBy = meta["document_author"]
     master = wb["UTS_TestCase_1"]
     imgs_master = extraer_imagenes(master)
     # ---- intro
@@ -436,8 +438,13 @@ def construir_plan(cat, k, fecha, out: Path, tpl: Path):
             c.alignment = Alignment(wrap_text=True, vertical="top")
         wi.row_dimensions[fila].height = 30
     wi["B6"].value = f"Proyecto: {meta['project_title']} (versión {meta['release']})"
+    if meta.get("document_author"):
+        wi["B7"] = "Elaborado por: " + meta["document_author"]
+        wi["B7"].font = copy.copy(wi["B6"].font)
     # ---- Matrix
     wm = wb["Matrix"]
+    for ref in ("D5", "E5", "F5", "G5"):
+        wm[ref].comment = None
     wm["C1"].value = "SDD.md, SAD.md, tests/ (@tc), docs/testing/manuales.yml"
     wm["C2"].value = f"{meta['release']} — Test Plan v1.0 ({fecha.isoformat()})"
     for rng in list(wm.merged_cells.ranges):
@@ -501,8 +508,12 @@ def construir_plan(cat, k, fecha, out: Path, tpl: Path):
             res = f"Ejecución automática {c['date'].isoformat()}: {c['n_tests']} prueba(s) pytest.\n{nodos}"
         elif c["status"] == "BLOCKED":
             res = f"Bloqueado por {c['blocked_by']}; no ejecutable hasta resolverlo."
+        elif c["status"] in ("PASSED", "FAILED"):
+            res = f"Ejecución manual {c['date'].isoformat()}: {c['status']}. Responsable: {c['tester']}."
         else:
-            res = f"Pendiente de ejecución manual (planeada: {c['date'].isoformat()}). Responsable: {c['tester']}."
+            res = f"Pendiente de ejecución manual (planeada: {c['date'].isoformat()})."
+            if c["tester"]:
+                res += f" Responsable: {c['tester']}."
         pre = f"Precondiciones:\n-{c['pre']}\n\nResultado de ejecución:\n{res}"
         poner(ws, "B17", pre)
         if c["status"] in ("PASSED", "FAILED"):
@@ -513,6 +524,7 @@ def construir_plan(cat, k, fecha, out: Path, tpl: Path):
                             ("B13", numerar(c["steps"]), 80), ("B15", numerar(c["expected"]), 80), ("B17", pre, 70),
                             ("B19", ws["B19"].value, 80), ("B21", meta["references"], 80)):
             ws.row_dimensions[ws[ref].row].height = alto(txt, w)
+        ws.row_dimensions[4].height = max(ws.row_dimensions[4].height, alto(c["name"], 45, base=18))
     del wb["UTS_TestCase_1"]
     del wb["Default_page"]
     # ---- hoja Strategy (estrategia + trazabilidad)
@@ -584,7 +596,9 @@ def construir_strategy(wb, cat, k, fecha):
         ("9b. Gestión de defectos", "Cada defecto es un issue de GitHub con la plantilla «Defecto» (label bug): TC que lo detectó, pasos, severidad y "
                                     "esperado vs. real. El Bug report se llena desde esos issues; quien lo abre es «Found by» y el assignee «Assigned to».",
          "Un TC Failed o Blocked debe tener su issue de bug; el generador lo verifica."),
-        ("10. Roles", "Responsable de calidad: ejecuta suite y publica reporte. Testers: " + ", ".join(meta["testers"]) + ". Desarrollo: corrige defectos.", ""),
+        ("10. Roles", "Responsable de calidad: ejecuta suite y publica reporte. "
+         + ("Responsables de pruebas: " + ", ".join(t for t in meta["testers"] if t) + ". " if any(meta["testers"]) else "")
+         + "Desarrollo: corrige defectos.", ""),
         ("11. Riesgos", "R1 Sin sincronización LAN (B-01) → RNF-01 no verificable entre terminales.\nR2 Reglas de reportes ambiguas (B-05).\n"
                         "R3 Pruebas de interfaz dependientes de Xvfb/Tk.\nR4 Fechas dependientes de la hora del sistema.",
          "Mitigación: BD temporal, fechas relativas a hoy, defectos y TC bloqueados documentados."),
@@ -620,16 +634,22 @@ FILL = {"Pass": "C8E6C9", "Fail": "FFCDD2", "Blocked": "FFE0B2", "Not executed":
 def construir_reporte(cat, k, cov, fecha, pngs, out: Path, tpl: Path):
     meta = cat["meta"]
     wb = openpyxl.load_workbook(tpl)
+    if meta.get("document_author"):
+        wb.properties.creator = wb.properties.lastModifiedBy = meta["document_author"]
     s = wb["Summary"]
     s._images = []
     for ref, v in (("C2", meta["project_title"]), ("C3", meta["release"]), ("C4", meta["milestone"]), ("C5", fecha.isoformat())):
         s[ref] = v
         s[ref].font = copy.copy(s["B2"].font)
         s[ref].alignment = Alignment(horizontal="left")
+    if meta.get("document_author"):
+        s["B6"] = "Elaborado por:"
+        s["B6"]._style = copy.copy(s["B5"]._style)
+        s["C6"] = meta["document_author"]
+        s["C6"]._style = copy.copy(s["C5"]._style)
     s["F19"].value = None
     s["D9"], s["D10"], s["D11"] = k["total"], k["planned"], k["executed"]
-    s["E10"].value = ("Los TC manuales pendientes y los bloqueados por brechas del SDD no cuentan como ejecutados "
-                      f"({k['planned'] - k['executed']} sin ejecutar).")
+    s["E10"].value = None
     pctfmt = s["D15"].number_format
     estilo_c, estilo_d = copy.copy(s["C12"]._style), copy.copy(s["D12"]._style)
     estilo_pct_c, estilo_pct_d = copy.copy(s["C15"]._style), copy.copy(s["D15"]._style)
@@ -644,7 +664,7 @@ def construir_reporte(cat, k, cov, fecha, pngs, out: Path, tpl: Path):
         r += 1
     filas = [("Pass Percentage of the defects (TC passed / executed)", k["pass_pct"], estilo_pct_c, estilo_pct_d, pctfmt),
              ("Number of critical defects (High, abiertos)", k["critical"], estilo_crit_c, estilo_crit_d, "General"),
-             ("Total pytest tests executed (passed / known-defect xfail / failed)",
+             ("Pruebas pytest por caso (aprobadas / xfail / fallidas)",
               f"{k['n_tests']} ({k['tests_res']['passed']} / {k['tests_res']['known_defect']} / {k['tests_res']['failed']})", estilo_crit_c, estilo_crit_d, "General")]
     if cov:
         filas.append(("Code coverage (line, pytest-cov)", cov["totals"]["percent_covered"] / 100, estilo_pct_c, estilo_pct_d, "0.0%"))
@@ -711,7 +731,8 @@ def construir_reporte(cat, k, cov, fecha, pngs, out: Path, tpl: Path):
             cell = b.cell(rr, j, v)
             cell._style = copy.copy(modelo[j - 1])
             cell.alignment = Alignment(wrap_text=True, vertical="top")
-        b.row_dimensions[rr].height = alto(df["steps"], 45)
+        b.row_dimensions[rr].height = max(alto(df["steps"], 45), alto(df["description"], 45),
+                                          alto(df["found_by"], 18), alto(df["assigned_to"], 24))
     for col, w in (("C", 45), ("D", 55), ("H", 24)):
         b.column_dimensions[col].width = w
     out.parent.mkdir(parents=True, exist_ok=True)
