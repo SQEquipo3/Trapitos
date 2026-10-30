@@ -16,7 +16,7 @@ testers:
 planned_date: '2026-10-31'
 environment: Windows 10/11 o Ubuntu 22.04; Python 3.12; SQLite 3 (BD temporal por prueba, load_examples=False); pytest 8 +
   pytest-cov; Tkinter con Xvfb en CI (GitHub Actions, ubuntu-latest).
-references: docs/SDD.md (§9 trazabilidad, §10 validación, §11 brechas); docs/SAD.md; tests/ en el repositorio
+references: docs/SDD.md (sección 9 - trazabilidad, sección 10 - validación, sección 11 - brechas); docs/SAD.md; tests/ en el repositorio
 requirements:
 - RF-01
 - RF-02
@@ -52,7 +52,7 @@ other_ids:
   RFC-4180: 'Estándar RFC 4180: formato de archivos CSV'
   FIPS-180-4: 'Estándar FIPS 180-4: función hash SHA-256'
   SQL-FK: 'Integridad referencial e integridad de la base SQLite'
-  SDD-CONTRATOS: 'Contratos de operaciones definidos en el SDD (§3.3) y tipos de movimiento de inventario'
+  SDD-CONTRATOS: 'Contratos de operaciones definidos en el SDD (sección 3.3) y tipos de movimiento de inventario'
 levels:
   UTS: Unitarias
   ITS: Integración
