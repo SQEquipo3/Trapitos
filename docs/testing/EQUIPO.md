@@ -31,7 +31,7 @@ def test_fechas_iso():
 ```
 
 - Cuando hacen push, GitHub Actions corre las pruebas y **genera solo** el Test Plan, el TC Design y el Test Report en Excel, con resultados, cobertura y gráficas.
-- Los Excel se descargan en **Actions → la ejecución → Artifacts → `entregables-qa`**.
+- La última versión de los Excel (de `main`) está en **Releases → `qa-latest`**. Los de un PR se descargan en **Actions → la ejecución → Artifacts → `entregables-qa`**.
 - Niveles:
   - UTS: unitarias
   - ITS: integración
