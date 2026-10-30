@@ -268,7 +268,7 @@ def test_base_rechaza_registros_huerfanos(db, empleado, make_product):
 @tc("CTS_SDD_01", nivel="CTS", modulo="ventas", reqs=["SDD-CONTRATOS", "RF-06", "RF-08"],
     nombre="Registrar, devolver y cancelar cumplen el contrato del SDD")
 def test_operaciones_de_venta_cumplen_contrato_del_sdd(db, empleado, make_product):
-    """Las firmas y resultados de las operaciones coinciden con la tabla de contratos del SDD (§3.3).
+    """Las firmas y resultados de las operaciones coinciden con la tabla de contratos del SDD (sección 3.3).
 
     Precondiciones: Producto de $200 con stock 10.
     Pasos:
