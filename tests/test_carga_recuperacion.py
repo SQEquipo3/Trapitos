@@ -27,17 +27,24 @@ PARAMETROS = {"Productos con stock bajo": "5", "Productos disponibles por catego
 @tc("STS_CAR_01", nivel="STS", modulo="reportes", reqs=["RF-15", "RF-17", "RF-18", "RF-19", "RF-25", "RNF-01"],
     nombre="Carga: reportes con un año de ventas responden en menos de 2 s")
 def test_reportes_responden_con_volumen_de_un_ano(db, empleado, make_product):
-    """Con el volumen de ventas de un año de la tienda, cada reporte responde en menos de 2 segundos.
+    """Prueba de carga: con el volumen de ventas de un año de la tienda, cada reporte de la pantalla
+    Reportes (la lista REPORTS de mis_trapitos/ui/reportes.py) debe responder en menos de 2 segundos,
+    que es lo aceptable para una consulta en mostrador. También confirma que, tras la carga, stock y
+    ventas siguen cuadrando. RNF-01, RF-15, RF-17, RF-18, RF-19, RF-25.
 
-    Precondiciones: 40 productos, 20 clientes y 1500 ventas registradas con el servicio de ventas.
+    Precondiciones: Fixtures db, empleado y make_product. Se crean 1 proveedor, 40 productos con stock
+      500 y 20 clientes en 5 regiones.
     Pasos:
-    - Registrar 1500 ventas repartidas entre productos, clientes y métodos de pago
-    - Ejecutar cada reporte de la pantalla Reportes con su parámetro y medir el tiempo
+    - Registrar 1500 ventas de 1 pieza con ventas_srv.registrar(), rotando producto, cliente y los 4
+      métodos de pago.
+    - Para cada nombre en REPORTS, medir con time.perf_counter() cuánto tarda reportes_repo.ejecutar(db,
+      nombre, parametro).
+    - Contar las ventas y sumar el stock de los 40 productos.
     Esperado:
-    - Ningún reporte tarda 2 s o más
-    - El stock y el número de ventas quedan consistentes tras la carga
-    Comentarios: 1500 ventas ≈ 5 ventas diarias durante un año. El límite de 2 s es el tiempo de respuesta
-      aceptable para una consulta en mostrador.
+    - Ningún reporte tarda 2 s o más (si alguno sí, el mensaje de la prueba dice cuál y cuánto).
+    - Hay 1500 ventas y el stock total es 40 × 500 − 1500 = 18 500.
+    Comentarios: 1500 ventas ≈ 5 ventas diarias durante un año. Las constantes VENTAS_CARGA y
+      LIMITE_REPORTE_S están al inicio de tests/test_carga_recuperacion.py.
     """
     proveedores_repo.guardar(db, None, ("Textiles Norte", "555", "Av 1", "Ropa", today_text()))
     productos = [make_product(code=f"C-{i:03d}", category="Ropa" if i % 2 else "Calzado",
@@ -62,18 +69,23 @@ def test_reportes_responden_con_volumen_de_un_ano(db, empleado, make_product):
 @tc("STS_REC_01", nivel="STS", modulo="ventas", reqs=["RF-04", "RF-06", "SQL-FK"],
     nombre="Recuperación: una caída a mitad de una venta no deja datos a medias")
 def test_caida_a_mitad_de_venta_se_recupera_al_reabrir(tmp_path):
-    """Si la aplicación se cae mientras guarda una venta, al reabrirla la base conserva las ventas
-    confirmadas y descarta la venta incompleta.
+    """Prueba de recuperación: si la aplicación se cae (corte de luz, proceso terminado) a mitad de guardar
+    una venta, al reabrirla la base debe conservar las ventas ya confirmadas y no dejar rastro de la
+    venta incompleta. Lo garantiza el db.transaction() de ventas_srv.registrar(). RF-04, RF-06, SQL-FK.
 
-    Precondiciones: Base en disco con un producto de stock 10 y un empleado.
+    Precondiciones: Base en disco en tmp_path (fixture de pytest). Un proceso Python aparte crea un
+      empleado y un producto P-1 con stock 10.
     Pasos:
-    - En otro proceso, registrar una venta completa de 2 piezas
-    - En ese mismo proceso, iniciar otra venta y terminar el proceso de golpe tras guardar el encabezado
-    - Reabrir la base con la aplicación
+    - En el proceso aparte, registrar una venta completa de 2 piezas con ventas.registrar().
+    - En el mismo proceso, reemplazar ventas_repo.insertar_partida por una función que hace os._exit(9)
+      e iniciar otra venta de 3 piezas: el proceso muere después de insertar el encabezado.
+    - Comprobar que el proceso terminó con código 9.
+    - Reabrir la base con Database(ruta, load_examples=False) y consultar sales, sale_items, movimientos
+      SALIDA, stock, PRAGMA integrity_check y PRAGMA foreign_key_check.
     Esperado:
-    - La primera venta existe completa y el stock es 8
-    - La venta interrumpida no existe (ni encabezado, ni partidas, ni movimientos)
-    - PRAGMA integrity_check es «ok» y no hay referencias rotas
+    - Existe 1 venta, 1 partida y 1 movimiento SALIDA; el stock es 8.
+    - La venta interrumpida no existe (ni encabezado, ni partidas, ni movimientos).
+    - integrity_check = 'ok' y foreign_key_check no regresa filas.
     """
     ruta = tmp_path / "tienda.db"
     script = textwrap.dedent(f"""

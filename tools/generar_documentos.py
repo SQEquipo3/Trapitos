@@ -406,6 +406,36 @@ def numerar(items):
     return "\n".join(f"{i}.- {t}" for i, t in enumerate(items, 1))
 
 
+def comentarios_tc(c):
+    """Campo «Comments» de la hoja del TC: comentarios de la ficha + dónde vive el TC y cómo correrlo."""
+    partes = [c["comments"]] if c.get("comments") else []
+    partes.append("Requisitos que cubre: " + ", ".join(c["reqs"]) + ".")
+    if c.get("tests"):
+        ui = any(t.split("::")[0] in PRUEBAS_CON_PANTALLA for t in c["tests"])
+        partes.append(f"Ficha definida en {c['definido_en']} (decorador @tc + docstring). "
+                      f"Pruebas pytest que lo implementan ({len(c['tests'])}):\n"
+                      + "\n".join(f"  · {t}" for t in c["tests"]))
+        partes.append("Para ejecutarlo solo:\n  " + ("xvfb-run -a " if ui else "") + "pytest " + " ".join(c["tests"])
+                      + ("\n  (usa Tkinter: en Windows/macOS sin xvfb-run)" if ui else ""))
+    else:
+        partes.append("TC manual: se define y se registra su resultado en docs/testing/manuales.yml "
+                      "(manual_result, executed_by, executed_on o blocked_by).")
+    return "\n\n".join(partes)
+
+
+# Archivos de prueba que abren ventanas Tk (en Linux sin pantalla necesitan xvfb-run).
+PRUEBAS_CON_PANTALLA = {"tests/test_login.py", "tests/test_ui_layout.py", "tests/test_ui_productos.py",
+                        "tests/test_promociones_devoluciones.py", "tests/test_conformidad.py"}
+
+# Prefijos de módulo en los ids de TC (NIVEL_MODULO_NN), para la guía de la hoja Strategy.
+PREFIJOS = {"VEN": "ventas", "PRO": "productos", "INV": "inventario / kardex", "CON": "contactos (clientes, proveedores, empleados)",
+            "REP": "reportes", "SEG": "seguridad / contraseñas", "UTL": "utilidades (utils.py)", "LOG": "login y sesión",
+            "PRM": "promociones", "DEV": "devoluciones y cancelaciones", "UI": "distribución de pantallas",
+            "CAR": "carga", "REC": "recuperación", "FMT": "formatos de fecha", "CSV": "archivos CSV",
+            "BD": "integridad de la base", "SDD": "contratos del SDD", "VD": "escenarios de validación VD-xx del SDD",
+            "INS": "instalación", "UX": "usabilidad"}
+
+
 def poner(ws, ref, valor, wrap=True, h=None):
     c = ws[ref]
     c.value = valor
@@ -507,7 +537,7 @@ def construir_plan(cat, k, fecha, out: Path, tpl: Path):
         poner(ws, "B17", pre)
         if c["status"] in ("PASSED", "FAILED"):
             ws["D17"].value = c["status"]
-        poner(ws, "B19", c.get("comments", "") or ("Caso derivado de " + ", ".join(c["reqs"]) + "."))
+        poner(ws, "B19", comentarios_tc(c))
         poner(ws, "B21", meta["references"])
         for ref, txt, w in (("B4", c["name"], 55), ("B7", ", ".join(c["reqs"]), 75), ("B9", c["objective"], 80), ("B11", env, 80),
                             ("B13", numerar(c["steps"]), 80), ("B15", numerar(c["expected"]), 80), ("B17", pre, 70),
@@ -589,6 +619,42 @@ def construir_strategy(wb, cat, k, fecha):
                         "R3 Pruebas de interfaz dependientes de Xvfb/Tk.\nR4 Fechas dependientes de la hora del sistema.",
          "Mitigación: BD temporal, fechas relativas a hoy, defectos y TC bloqueados documentados."),
         ("12. Calendario", f"Emisión del plan: {fecha.isoformat()}. TC manuales planeados para: {meta['planned_date']}.", ""),
+    ])
+    titulo("Guía rápida para quien llega nuevo al proyecto")
+    prefijos = sorted({c["id"].split("_")[1] for c in cat["cases"]})
+    tabla(["Tema", "Explicación", "Dónde verlo"], [
+        ("¿Qué es el sistema?", f"{meta['project_title']} es el punto de venta e inventario de una tienda de ropa: productos con "
+                                "variantes de talla/color, ventas con promociones y descuentos, devoluciones y cancelaciones, "
+                                "clientes, proveedores, empleados y 12 reportes. Es una aplicación de escritorio (Python + Tkinter) "
+                                "con una base SQLite local.",
+         "main.py arranca App (mis_trapitos/ui/app.py). Requisitos en docs/SDD.md, arquitectura en docs/SAD.md."),
+        ("Capas del código", "1) Interfaz: mis_trapitos/ui/ — una clase por pantalla (ProductosUI, VentasUI, PromocionesUI, "
+                             "DevolucionesUI, ReportesUI, Login, App).\n2) Reglas de negocio: mis_trapitos/services/ — "
+                             "ventas.registrar() y ServicioVentas (carrito), devoluciones.devolver() y cancelar_venta().\n"
+                             "3) Datos: mis_trapitos/data/repositories/ — el SQL de cada entidad (productos.guardar(), "
+                             "promociones.porcentaje_vigente(), reportes.ejecutar(), clientes.historial(), …).\n"
+                             "4) Conexión: mis_trapitos/data/database.py (Database, transaction()) y schema.py (tablas y restricciones).",
+         "Los pasos de cada TC nombran la función exacta que se llama; búscala con el nombre en esas carpetas."),
+        ("Cómo leer el id de un TC", "NIVEL_MÓDULO_NN. Nivel: " + ", ".join(f"{k} = {v}" for k, v in meta["levels"].items())
+         + ".\nMódulo: " + "; ".join(f"{p} = {PREFIJOS.get(p, p)}" for p in prefijos) + ".",
+         "Cada TC tiene su hoja con ese nombre en este archivo y en el TC Design."),
+        ("De dónde sale cada hoja de TC", "Los TC automatizados (método TA) son pruebas pytest en tests/: la que lleva el decorador "
+                                          "@tc(id, nivel=…, modulo=…, reqs=…, nombre=…) tiene en su docstring el objetivo, las "
+                                          "precondiciones, los pasos y el resultado esperado que aparecen en la hoja. Las demás "
+                                          "pruebas del mismo TC solo llevan @tc(id). Los TC manuales viven en docs/testing/manuales.yml.",
+         "Campo «Comments» de cada hoja: archivo, pruebas que lo implementan y el comando para correrlo solo."),
+        ("Datos de prueba (fixtures)", "Ninguna prueba toca mis_trapitos.db. tests/conftest.py da: db (base SQLite temporal y vacía), "
+                                       "empleado (usuario 'vende' / '1234'), make_product (crea productos; por omisión stock 10 y "
+                                       "precio $200), dias(n) (fecha relativa a hoy) y stock(db, id). Algunas pruebas tienen su propio "
+                                       "conjunto de datos: mundo (tests/test_reportes.py) y operaciones (tests/test_conformidad.py).",
+         "Las pruebas de interfaz crean ventanas Tk ocultas; en CI corren con Xvfb."),
+        ("Estados del resultado", "PASSED: todas sus pruebas pasaron. FAILED: alguna falló; incluye las marcadas "
+                                  "xfail(strict) por un bug conocido, que se ligan a su issue. BLOCKED: TC manual que no se "
+                                  "puede ejecutar por un issue (blocked_by). NOT_EXECUTED: manual aún sin ejecutar.",
+         "Los bugs son issues de GitHub con label «bug»; salen en la hoja «Bug report» del Test Report."),
+        ("Reproducir estos documentos", "pip install -r requirements-dev.txt\nxvfb-run -a pytest --cov=mis_trapitos "
+                                        "--cov-report=json:reports/coverage.json\npython tools/generar_documentos.py",
+         "docs/testing/README.md explica cómo agregar un TC, reportar un bug y registrar un TC manual."),
     ])
     titulo("Matriz de trazabilidad requisito → casos de prueba")
     ids_extra = meta.get("other_ids", {})
