@@ -674,11 +674,7 @@ def construir_reporte(cat, k, cov, fecha, pngs, out: Path, tpl: Path):
         s[f"C{r}"]._style, s[f"D{r}"]._style = copy.copy(estilo_c), copy.copy(estilo_d)
         r += 1
     filas = [("Pass Percentage of the defects (TC passed / executed)", k["pass_pct"], estilo_pct_c, estilo_pct_d, pctfmt),
-             ("Number of critical defects (High, abiertos)", k["critical"], estilo_crit_c, estilo_crit_d, "General"),
-             ("Total pytest tests executed (passed / known-defect xfail / failed)",
-              f"{k['n_tests']} ({k['tests_res']['passed']} / {k['tests_res']['known_defect']} / {k['tests_res']['failed']})", estilo_crit_c, estilo_crit_d, "General")]
-    if cov:
-        filas.append(("Code coverage (line, pytest-cov)", cov["totals"]["percent_covered"] / 100, estilo_pct_c, estilo_pct_d, "0.0%"))
+             ("Number of critical defects (High, abiertos)", k["critical"], estilo_crit_c, estilo_crit_d, "General")]
     for t, v, sc, sd, nf in filas:
         s[f"C{r}"], s[f"D{r}"] = t, v
         s[f"C{r}"]._style, s[f"D{r}"]._style = copy.copy(sc), copy.copy(sd)
