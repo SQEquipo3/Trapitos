@@ -88,7 +88,7 @@ Funciones principales:
 | `cargar_catalogo` | Junta meta.yml + TC del código + manuales.yml | No |
 | `cargar_bugs`, `leer_formulario`, `defecto_desde_issue` | Bugs desde GitHub | No |
 | `evaluar`, `validar`, `conteos` | Estado de cada TC, consistencia y conteos | No |
-| `graficas` | 6 diagramas (matplotlib) | No |
+| `graficas` | 2 diagramas (matplotlib): TC por estado y TC por módulo | No |
 | `construir_plan`, `construir_strategy`, `construir_tc_design`, `construir_reporte` | Llenan las plantillas | No |
 
 **Contrato interno.** Si tus funciones de lectura entregan esto, todo lo demás funciona igual:

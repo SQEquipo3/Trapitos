@@ -287,7 +287,8 @@ PAL = {"PASSED": "#2E7D32", "FAILED": "#C62828", "BLOCKED": "#EF6C00", "NOT_EXEC
 MODCOL = ["#1F4E79", "#2E86AB", "#F6AE2D", "#8E6C8A", "#5C8A4D", "#B5543C"]
 
 
-def graficas(cat, k, cov, outdir: Path):
+def graficas(k, outdir: Path):
+    """Diagramas del Test Report: casos de prueba por estado y por módulo (los que pidió el maestro)."""
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
@@ -315,42 +316,6 @@ def graficas(cat, k, cov, outdir: Path):
         [k["status"][s] for s in etiq], [PAL[s] for s in etiq])
     mods = list(k["por_modulo"])
     pie("pie_tc_modulo", "Casos de prueba por módulo", mods, [k["por_modulo"][m] for m in mods], MODCOL)
-    tm = list(k["tests_modulo"])
-    pie("pie_pytest_modulo", "Pruebas pytest ejecutadas por módulo", tm, [k["tests_modulo"][m] for m in tm], MODCOL)
-    niveles = cat["meta"]["levels"]
-    pie("pie_tc_nivel", "Casos de prueba por nivel", list(niveles.values()),
-        [sum(c["level"] == l for c in cat["cases"]) for l in niveles], MODCOL)
-    # barras apiladas por módulo y estado
-    fig, ax = plt.subplots(figsize=(6.4, 3.6), dpi=130)
-    bottom = [0] * len(mods)
-    for s in etiq:
-        vals = [sum(1 for c in cat["cases"] if c["module"] == m and c["status"] == s) for m in mods]
-        ax.bar(mods, vals, bottom=bottom, color=PAL[s], label=etiq[s], edgecolor="white")
-        bottom = [a + b for a, b in zip(bottom, vals)]
-    ax.set_title("Estado de los casos de prueba por módulo", fontsize=11, loc="left", fontweight="bold")
-    ax.legend(frameon=False, fontsize=8, ncol=4, loc="upper center", bbox_to_anchor=(0.5, -0.12))
-    ax.spines[["top", "right"]].set_visible(False)
-    fig.tight_layout()
-    p = outdir / "bar_estado_modulo.png"
-    fig.savefig(p)
-    plt.close(fig)
-    pngs["bar_estado_modulo"] = p
-    if cov:
-        files = sorted(((f.replace("mis_trapitos/", ""), d["summary"]["percent_covered"]) for f, d in cov["files"].items()),
-                       key=lambda x: x[1])
-        fig, ax = plt.subplots(figsize=(6.4, max(3, 0.28 * len(files) + 1)), dpi=130)
-        ax.barh([f for f, _ in files], [v for _, v in files], color="#1F4E79")
-        ax.axvline(cov["totals"]["percent_covered"], color="#C62828", ls="--", lw=1)
-        ax.set_xlim(0, 100)
-        ax.set_title(f"Cobertura de líneas por archivo (total {cov['totals']['percent_covered']:.1f}%)",
-                     fontsize=11, loc="left", fontweight="bold")
-        ax.tick_params(axis="y", labelsize=7)
-        ax.spines[["top", "right"]].set_visible(False)
-        fig.tight_layout()
-        p = outdir / "bar_cobertura.png"
-        fig.savefig(p)
-        plt.close(fig)
-        pngs["bar_cobertura"] = p
     return pngs
 
 # --------------------------------------------------------------------------- utilidades Excel
@@ -725,8 +690,7 @@ def construir_reporte(cat, k, cov, fecha, pngs, out: Path, tpl: Path):
     fila_img = r + 2
     s[f"B{fila_img - 1}"] = "Diagramas"
     s[f"B{fila_img - 1}"].font = Font(bold=True, size=12, color="1F4E79")
-    orden = [("pie_total_tc", "B", 0), ("pie_tc_modulo", "E", 0), ("pie_pytest_modulo", "B", 1), ("pie_tc_nivel", "E", 1),
-             ("bar_estado_modulo", "B", 2), ("bar_cobertura", "E", 2)]
+    orden = [("pie_total_tc", "B", 0), ("pie_tc_modulo", "E", 0)]
     for name, col, lvl in orden:
         if name not in pngs:
             continue
@@ -801,7 +765,7 @@ def main(argv=None):
     k = conteos(cat)
     out = Path(a.out)
     sufijo = f"{cat['meta']['team']}_{cat['meta']['project']}"
-    pngs = graficas(cat, k, cov, out / "diagramas")
+    pngs = graficas(k, out / "diagramas")
     plan = out / f"SW_Test_Plan_{sufijo}.xlsx"
     construir_plan(cat, k, fecha, plan, TPL / "SW_Test_Plan__Team0X___ProjectName_.xlsx")
     construir_tc_design(plan, out / f"TC_Design_{sufijo}.xlsx")
