@@ -25,7 +25,7 @@ body:
     id: reqs
     attributes:
       label: Requisitos cubiertos
-      description: "RF-xx / RNF-01 del SDD §9"
+      description: "RF-xx / RNF-01 del SDD, sección 9"
     validations: {required: true}
   - type: textarea
     id: objetivo

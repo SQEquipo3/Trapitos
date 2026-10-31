@@ -8,6 +8,8 @@ Los tres entregables (**SW Test Plan**, **TC Design** y **Test Report**) se gene
 
 En cada Pull Request, `tests.yml` corre pytest, genera los Excel y los sube como artefacto **`entregables-qa`** (pestaña *Actions* → la corrida → *Artifacts*).
 
+En cada push a `main` los Excel además se publican en el release **`qa-latest`** (pestaña *Releases*), reemplazando los anteriores: ahí siempre está la última versión, sin descargar artefactos. Incluye los 3 `.xlsx` y `entregables-qa.zip` con las gráficas.
+
 ## 1. Escribir una prueba (TC automatizado)
 
 ```python

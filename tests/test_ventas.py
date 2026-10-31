@@ -390,7 +390,7 @@ def test_cancelacion_con_lineas_duplicadas_repone_el_remanente_exacto(db, emplea
     - Comparar stock final con 20
     Esperado:
     - Stock final = 20
-    Comentarios: DEFECTO ABIERTO B-03 (SDD §11): la cancelación calcula el remanente por línea y
+    Comentarios: DEFECTO ABIERTO B-03 (SDD, sección 11): la cancelación calcula el remanente por línea y
     descuenta las devoluciones dos veces. La prueba está marcada xfail(strict) y se reporta como
     FAILED.
     """
@@ -412,7 +412,7 @@ def test_reporte_ventas_por_producto_descuenta_devoluciones(db, empleado, make_p
     - Ejecutar 'Ventas por producto'
     Esperado:
     - La fila del producto desaparece o muestra 0 piezas
-    Comentarios: DEFECTO ABIERTO B-05 (SDD §11): los agregados no restan returns. Prueba
+    Comentarios: DEFECTO ABIERTO B-05 (SDD, sección 11): los agregados no restan returns. Prueba
     xfail(strict), se reporta FAILED.
     """
     pid = make_product(price=100, stock=10)
