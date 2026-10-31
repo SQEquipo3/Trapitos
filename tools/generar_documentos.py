@@ -139,7 +139,9 @@ def cargar_catalogo(base: Path = TESTING, tests: Path = TESTS):
     ids = [c["id"] for c in automaticos + manuales]
     errores += [f"id duplicado: {i}" for i, n in Counter(ids).items() if n > 1]
     cases = sorted(automaticos + manuales, key=lambda c: (orden.index(c["level"]), c["id"]))
-    return {"meta": meta, "cases": cases, "defects": [], "errores": errores}
+    sesiones_path = base / "sesiones_manuales.yml"
+    sesiones = leer(sesiones_path) if sesiones_path.exists() else {}
+    return {"meta": meta, "cases": cases, "defects": [], "errores": errores, "manual_sessions": sesiones}
 
 
 def coincide(nodeid, prefijo):
@@ -399,7 +401,7 @@ def ajustar_impresion(wb):
     for ws in wb.worksheets:
         ws.sheet_properties.pageSetUpPr = PageSetupProperties(fitToPage=True)
         ws.page_setup.fitToWidth, ws.page_setup.fitToHeight = 1, 0
-        ws.page_setup.orientation = "landscape" if ws.title in ("Matrix", "Detailed status", "Bug report", "Strategy") else "portrait"
+        ws.page_setup.orientation = "landscape" if ws.title in ("Matrix", "Detailed status", "Bug report", "Strategy", "Sesiones manuales") else "portrait"
 
 
 def numerar(items):
@@ -530,6 +532,7 @@ def construir_plan(cat, k, fecha, out: Path, tpl: Path):
     # ---- hoja Strategy (estrategia + trazabilidad)
     construir_strategy(wb, cat, k, fecha)
     wb.move_sheet("Strategy", offset=-(len(wb.sheetnames) - 2))
+    construir_sesiones_manuales(wb, cat)
     out.parent.mkdir(parents=True, exist_ok=True)
     ajustar_impresion(wb)
     wb.save(out)
@@ -619,7 +622,7 @@ def construir_tc_design(plan_path: Path, out: Path):
     for n in ("intro", "Matrix", "Strategy"):
         pass
     for ws in wb.worksheets:
-        if ws.title not in ("intro", "Matrix", "Strategy"):
+        if ws.title not in ("intro", "Matrix", "Strategy", "Sesiones manuales"):
             ws["C5"].value = "YES"
     del wb["Matrix"]
     wb["intro"]["B4"].value = "Test Case Design"
@@ -629,6 +632,62 @@ def construir_tc_design(plan_path: Path, out: Path):
 # --------------------------------------------------------------------------- Test Report
 ESTADO = {"PASSED": "Pass", "FAILED": "Fail", "BLOCKED": "Blocked", "NOT_EXECUTED": "Not executed"}
 FILL = {"Pass": "C8E6C9", "Fail": "FFCDD2", "Blocked": "FFE0B2", "Not executed": "E0E0E0"}
+
+
+def construir_sesiones_manuales(wb, cat):
+    registro = cat.get("manual_sessions") or {}
+    sesiones = registro.get("sesiones") or []
+    if not sesiones:
+        return
+    ws = wb.create_sheet("Sesiones manuales")
+    ws.sheet_view.showGridLines = False
+    ws.freeze_panes = "C6"
+    fecha = dt.date.fromisoformat(str(registro["fecha"]))
+    for fila, texto in ((1, "Registro de sesiones manuales"),
+                        (2, f"Fecha de ejecución: {fecha.isoformat()} · {registro['zona_horaria']}"),
+                        (3, "Elaborado por: " + cat["meta"].get("document_author", ""))):
+        ws.merge_cells(start_row=fila, start_column=1, end_row=fila, end_column=9)
+        ws.cell(fila, 1, texto).font = Font(name="Calibri", size=18 if fila == 1 else 11,
+                                         bold=fila == 1, color="1F4E79")
+        ws.row_dimensions[fila].height = 28 if fila == 1 else 20
+    cabeceras = ("Participante", "Fecha", "Inicio", "Fin", "Duración de sesión", "Tiempo de registro",
+                 "Conectividad", "Asistencia", "Registro < 5 min")
+    anchos = (23, 14, 10, 10, 17, 18, 17, 44, 20)
+    for col, (titulo, ancho) in enumerate(zip(cabeceras, anchos), 1):
+        celda = ws.cell(5, col, titulo)
+        celda.fill = PatternFill("solid", fgColor="1F4E79")
+        celda.font = Font(name="Calibri", bold=True, color="FFFFFF")
+        celda.alignment = Alignment(wrap_text=True, vertical="center")
+        ws.column_dimensions[celda.column_letter].width = ancho
+    ws.row_dimensions[5].height = 32
+    for fila, sesion in enumerate(sesiones, 6):
+        valores = (sesion["participante"], fecha, dt.time.fromisoformat(sesion["inicio"]),
+                   dt.time.fromisoformat(sesion["fin"]), f"=ROUND(MOD(D{fila}-C{fila},1)*1440,0)",
+                   sesion["registro_minutos"], "Sin internet" if sesion["sin_internet"] else "Con internet",
+                   sesion["asistencia"], f'=IF(F{fila}<5,"Cumple","No cumple")')
+        for col, valor in enumerate(valores, 1):
+            celda = ws.cell(fila, col, valor)
+            celda.font = Font(name="Calibri", size=11, color="17365D")
+            celda.alignment = Alignment(wrap_text=True, vertical="center")
+            celda.fill = PatternFill("solid", fgColor="EEF3F8" if fila % 2 == 0 else "FFFFFF")
+        for col in range(2, 8):
+            ws.cell(fila, col).alignment = Alignment(horizontal="center", wrap_text=True, vertical="center")
+        ws.cell(fila, 2).number_format = "yyyy-mm-dd"
+        for col in (3, 4):
+            ws.cell(fila, col).number_format = "hh:mm"
+        for col in (5, 6):
+            ws.cell(fila, col).number_format = '0" min"'
+        ws.row_dimensions[fila].height = 52
+    ultima = 5 + len(sesiones)
+    ws.auto_filter.ref = f"A5:I{ultima}"
+    textos = list(registro.get("observaciones", [])) + ["Evidencia: " + registro["evidencia"]]
+    for fila, texto in enumerate(textos, ultima + 2):
+        ws.merge_cells(start_row=fila, start_column=1, end_row=fila, end_column=9)
+        celda = ws.cell(fila, 1, texto)
+        celda.font = Font(name="Calibri", size=11, color="17365D")
+        celda.alignment = Alignment(wrap_text=True, vertical="center")
+        ws.row_dimensions[fila].height = alto(texto, 150, base=15)
+    ws.print_area = f"A1:I{ultima + 1 + len(textos)}"
 
 
 def construir_reporte(cat, k, cov, fecha, pngs, out: Path, tpl: Path):
@@ -735,6 +794,7 @@ def construir_reporte(cat, k, cov, fecha, pngs, out: Path, tpl: Path):
                                           alto(df["found_by"], 18), alto(df["assigned_to"], 24))
     for col, w in (("C", 45), ("D", 55), ("H", 24)):
         b.column_dimensions[col].width = w
+    construir_sesiones_manuales(wb, cat)
     out.parent.mkdir(parents=True, exist_ok=True)
     ajustar_impresion(wb)
     wb.save(out)

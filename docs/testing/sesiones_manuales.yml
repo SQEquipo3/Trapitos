@@ -1,0 +1,31 @@
+fecha: '2026-10-29'
+zona_horaria: America/Mexico_City
+facilitadora: Elizabeth Barajas
+responsable_validacion_instalacion: Elizabeth Barajas
+tipo_registro: Ejecución manual de aceptación
+participacion_real_del_cliente: true
+referencia_horaria: Registro manual de la sesión
+evidencia: docs/testing/evidencias/2026-10-29/README.md
+equipo: PC limpio, sin base de datos previa
+instalacion_sin_internet: true
+metodo_desconexion: Wi-Fi desactivado y cable de red desconectado
+login_y_productos_primer_arranque: correctos
+inicio_sesion_y_productos_tras_reapertura: correctos
+autonomia_evaluada: true
+asistencia_inicial: Explicación breve inicial de las funcionalidades añadidas, el estado del proyecto, la tarea a realizar, en qué consistía la prueba y los criterios de medición. No se explicó el funcionamiento de la aplicación ni se indicaron pantallas, menús o botones antes de la prueba (notas manuscritas de la facilitadora)
+asistencia_durante_registro_y_venta: false
+incidencias: Ninguna
+observaciones:
+  - Instalación y funcionamiento sin internet satisfactorios, con Wi-Fi desactivado y cable de red desconectado, sin incidencias.
+  - Carlos Fonseca es el cliente principal y conocía previamente los requisitos. Completó el registro y la venta en 60 segundos, sin ayuda durante la tarea.
+  - 'ATS_INS_01 y ATS_UX_01: aprobados en la sesión de Carlos Fonseca.'
+sesiones:
+  - participante: Carlos Fonseca
+    inicio: '20:30'
+    fin: '20:40'
+    registro_minutos: 1
+    sin_internet: true
+    asistencia: Explicación breve inicial sin indicar el funcionamiento de la aplicación; registro y venta sin ayuda
+    cliente_principal: true
+    conocimiento_previo_requisitos: true
+    resultado_funcional: Satisfactorio

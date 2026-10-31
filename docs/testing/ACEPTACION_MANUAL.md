@@ -20,7 +20,7 @@ Verificar el estado de [#57](https://github.com/SQEquipo3/Trapitos/issues/57) y 
 
 Trabajar en una copia descartable del código, fuera del directorio de operación y sin copiar `mis_trapitos.db`. Registrar SHA, sistema operativo, versión de Python y dependencias. Cada caso debe empezar con sus propias precondiciones, sin aprovechar el stock modificado por otro caso.
 
-Hay una diferencia entre las instrucciones de las incidencias: #75 menciona `load_examples=False`, mientras que #60 pide `python main.py` y datos de ejemplo. El arranque actual de `main.py` abre `Database` con ejemplos habilitados. Este guion conserva ese arranque para ATS_INS_01 y prepara datos controlados para ATS_UX_01 en una copia descartable. No se declara cumplida la condición `load_examples=False` para esos arranques; su aplicación a la ejecución manual queda pendiente de revisión del equipo. Las pruebas automatizadas sí pueden usar esa opción.
+Hay una diferencia entre las instrucciones de las incidencias: #75 menciona `load_examples=False`, mientras que #60 pide `python main.py` y datos de ejemplo. El arranque actual de `main.py` abre `Database` con ejemplos habilitados. Este guion conserva ese arranque para ATS_INS_01 y prepara datos controlados para ATS_UX_01 en una copia descartable. **Decisión:** `load_examples=False` aplica solo a las pruebas automatizadas con pytest; las pruebas manuales de aceptación usan el arranque normal de `python main.py` con datos de ejemplo, como pide #60, en una copia descartable que no toca los datos de operación.
 
 ## ATS_INS_01: instalación sin internet
 

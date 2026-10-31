@@ -21,7 +21,10 @@
   - Instalación sin descargas de internet ni dependencias faltantes
   - Inicio de sesión y pantalla Productos operativos en ambos arranques
   - La BD se crea en la copia de prueba, sin usar datos de operación
-  comments: 'Pendiente de ejecución en equipo limpio. El arranque normal carga datos de ejemplo; la condición load_examples=False requiere revisión. Conservar versión, registro de instalación y evidencia según ACEPTACION_MANUAL.md.'
+  manual_result: PASSED
+  executed_by: Carlos Fonseca
+  executed_on: '2026-10-29'
+  comments: 'Sesión de Carlos Fonseca, cliente principal, de 20:30 a 20:40, facilitada por Elizabeth Barajas. Instalación en PC limpio, sin base de datos previa, con Wi-Fi desactivado y cable de red desconectado. Inicio de sesión y apertura de Productos correctos en el primer arranque y tras cerrar y volver a abrir la aplicación. Sin incidencias. Versión: b93812d (codigo.zip, SHA-256 3f6ffbdb…6c62546). Evidencia: evidencias/2026-10-29/Carlos Fonseca.md.'
 
 - id: ATS_UX_01
   level: ATS
@@ -42,7 +45,10 @@
   - Completa ambas tareas sin asistencia en menos de 300 segundos
   - ACEP-NUEVO-01 queda registrado con stock 5
   - La venta aplica 25% de promoción y totaliza 300; ACEP-PROMO-01 queda con stock 8
-  comments: 'Pendiente de ejecución con el cliente (#60). Registrar duración, asistencia y evidencia según ACEPTACION_MANUAL.md.'
+  manual_result: PASSED
+  executed_by: Carlos Fonseca
+  executed_on: '2026-10-29'
+  comments: 'Carlos Fonseca, cliente principal con conocimiento previo de los requisitos, completó el registro y la venta en 60 segundos según el cronometraje manual. Explicación breve inicial de las funcionalidades, el estado, la tarea y los criterios de medición, sin explicar el funcionamiento de la aplicación ni indicar pantallas, menús o botones (notas de la facilitadora); sin ayuda durante el registro y la venta. Funcionamiento sin internet satisfactorio, sin incidencias. Versión: b93812d. Evidencia: evidencias/2026-10-29/Carlos Fonseca.md.'
 
 - id: ATS_SEG_01
   level: ATS

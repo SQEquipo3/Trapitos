@@ -1,0 +1,70 @@
+{
+  "tipo_registro": "Ejecución manual de aceptación",
+  "participante": "Carlos Fonseca",
+  "participacion_real_del_cliente": true,
+  "cliente_principal": true,
+  "fecha": "2026-10-29",
+  "zona_horaria": "America/Mexico_City",
+  "referencia_horaria": "Registro manual de la sesión",
+  "inicio_sesion": "20:30",
+  "fin_sesion": "20:40",
+  "duracion_sesion_minutos": 10,
+  "facilitadora": "Elizabeth Barajas",
+  "responsable_validacion_instalacion": "Elizabeth Barajas",
+  "equipo": "PC limpio, sin base de datos previa",
+  "sha_codigo": "b93812dc4002aad9b35122d93d9cef462c244327",
+  "codigo_zip_sha256": "3f6ffbdb62ed190611d15eda9821b1ff579c93db6abef5d80c34686226c62546",
+  "sin_internet": true,
+  "metodo_desconexion": "Wi-Fi desactivado y cable de red desconectado",
+  "incidencias": [],
+  "casos": {
+    "ATS_INS_01": {
+      "manual_result": "PASSED",
+      "equipo_limpio": true,
+      "base_de_datos_previa": false,
+      "instalacion_sin_internet": true,
+      "red_desconectada": true,
+      "instalacion_correcta": true,
+      "validacion_manual": true,
+      "responsable_validacion": "Elizabeth Barajas",
+      "primer_arranque": {
+        "login_correcto": true,
+        "productos_operativo": true
+      },
+      "segundo_arranque": {
+        "login_correcto": true,
+        "productos_operativo": true
+      },
+      "funcionamiento_correcto": true
+    },
+    "ATS_UX_01": {
+      "manual_result": "PASSED",
+      "registro_y_venta_minutos": 1,
+      "registro_y_venta_segundos": 60,
+      "limite_segundos_exclusivo": 300,
+      "cumple_tiempo": true,
+      "autonomia_evaluada": true,
+      "asistencia_evaluada": true,
+      "asistencia_inicial": "Explicación breve inicial de las funcionalidades añadidas, el estado del proyecto, la tarea a realizar, en qué consistía la prueba y los criterios de medición. No se explicó el funcionamiento de la aplicación ni se indicaron pantallas, menús o botones antes de la prueba (notas manuscritas de la facilitadora)",
+      "explicacion_funcionamiento_previa": false,
+      "fuente_asistencia": "Notas manuscritas de la facilitadora, 2026-10-29",
+      "asistencia_durante_registro_y_venta": false,
+      "registro_y_venta_correctos": true,
+      "funcionamiento_sin_internet": true
+    }
+  },
+  "material_grafico": {
+    "catalogo": "catalogo_capturas.csv",
+    "numero_capturas": 11,
+    "funcion": "Respaldo visual de las pantallas y resultados funcionales",
+    "referencia_temporal_de_ejecucion": "Registro manual de la sesión",
+    "verificacion_funcional": "datos_funcionales.json",
+    "entorno_documentado": "entorno_documentado.json",
+    "medicion_temporal": "medicion_temporal.json",
+    "metadatos_originales": "metadatos_capturas_originales.csv"
+  },
+  "issues": [
+    60,
+    75
+  ]
+}
