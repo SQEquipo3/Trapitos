@@ -1,4 +1,4 @@
-"""Escenarios de aceptación automatizables (VD-01 … VD-07 del SDD §10).
+"""Escenarios de aceptación automatizables (VD-01 … VD-07 del SDD, sección 10).
 
 Cada prueba cuenta una historia completa del usuario usando solo la capa de
 datos pública (repositorios y servicios), como lo haría la interfaz.
