@@ -83,3 +83,15 @@ python tools/generar_documentos.py --sin-github   # sin conexión: el Bug report
 * Cada integrante agrega su línea en `revisiones` de `meta.yml` (sale en la hoja `intro`).
 * Ejecuten los TC manuales y registren su resultado.
 * Descarguen el artefacto `entregables-qa` de la última corrida en `main`.
+
+## Pruebas de sistema de la interfaz (#71)
+
+Los 16 TC de [#71](https://github.com/SQEquipo3/Trapitos/issues/71) se ejecutan con widgets Tkinter reales y bases temporales con `load_examples=False`:
+
+```bash
+python -m pytest tests/test_login.py tests/test_ui_productos.py tests/test_promociones_devoluciones.py tests/test_ui_layout.py --capture=sys -v
+```
+
+En Linux sin escritorio, anteponer `xvfb-run -a`. En Windows, `--capture=sys` evita interferencias entre la captura de archivos de pytest y Tcl/Tk. Para generar los entregables finales, ejecutar la suite completa con cobertura y después el generador, como se indica arriba; una ejecución parcial no contiene los resultados de los demás niveles.
+
+En el artefacto `entregables-qa`, la hoja `Detailed status` del Test Report debe incluir `STS_LOG_01–03`, `STS_PRO_01–07`, `STS_PRM_01–02`, `STS_DEV_01–02` y `STS_UI_01–02`. El defecto de fechas de promociones detectado por `STS_PRM_02` se sigue en [#78](https://github.com/SQEquipo3/Trapitos/issues/78).

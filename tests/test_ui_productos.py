@@ -5,6 +5,7 @@ Se necesita Tk con una sesion grafica; las ventanas permanecen ocultas.
 """
 
 import csv
+from functools import partial
 from pathlib import Path
 import tempfile
 import tkinter as tk
@@ -70,7 +71,7 @@ class TemporaryInventoryTest(unittest.TestCase):
         directory = tempfile.TemporaryDirectory(prefix="trapitos-tests-")
         self.addCleanup(directory.cleanup)
         self.directory = Path(directory.name)
-        self.start_patch(patch("mis_trapitos.data.database.seed_examples"))
+        self.start_patch(patch.object(application, "Database", side_effect=partial(Database, load_examples=False)))
         self.info = self.start_patch(patch.object(messagebox, "showinfo"))
         self.error = self.start_patch(patch.object(messagebox, "showerror"))
         self.warning = self.start_patch(patch.object(messagebox, "showwarning"))
@@ -84,7 +85,7 @@ class TemporaryInventoryTest(unittest.TestCase):
 class ProductosUITest(TemporaryInventoryTest):
     def setUp(self):
         super().setUp()
-        self.db = Database(str(self.directory / "inventario.db"))
+        self.db = Database(str(self.directory / "inventario.db"), load_examples=False)
         self.addCleanup(self.db.close)
         self.root = tk.Tk()
         self.root.withdraw()
@@ -147,34 +148,39 @@ class ProductosUITest(TemporaryInventoryTest):
 
         Precondiciones: Producto existente.
         Pasos:
-        - Capturar datos inválidos y guardar
+        - Capturar datos inválidos tanto al agregar como al editar un producto
         - Guardar edición sin seleccionar producto
         Esperado:
         - Mensaje de error
-        - Sin cambios en products ni inventory_movements
+        - Sin cambios en products ni inventory_movements, ni confirmación de guardado
         """
         product_id = self.add_product()
-        original = dict(self.db.one("SELECT * FROM products WHERE id=?", (product_id,)))
-        movements = self.db.scalar("SELECT COUNT(*) FROM inventory_movements")
+        tables = ("products", "inventory_movements")
+        original = {table: [tuple(row) for row in self.db.query(f"SELECT * FROM {table} ORDER BY id")]
+                    for table in tables}
         invalid_values = [
             {field: " "} for field in
             ("p_code", "p_name", "p_category", "p_size", "p_color")
         ] + [
             {"p_purchase": "-1"}, {"p_sale": "-1"}, {"p_stock": "-1"},
-            {"p_purchase": "abc"}, {"p_stock": "1.5"}, {"p_supplier": "9999"},
+            {"p_purchase": "abc"}, {"p_sale": "abc"}, {"p_stock": "1.5"},
+            {"p_supplier": "9999"}, {"p_supplier": "abc"},
         ]
-        for values in invalid_values:
-            with self.subTest(values=values):
-                self.error.reset_mock()
-                fill_product(self.ui, **values)
-                self.ui.edit_product_ui()
-                self.error.assert_called_once()
-                self.assertEqual(
-                    dict(self.db.one("SELECT * FROM products WHERE id=?", (product_id,))),
-                    original,
-                )
-                self.assertEqual(self.db.scalar("SELECT COUNT(*) FROM inventory_movements"),
-                                 movements)
+        for save in (self.ui.add_product_ui, self.ui.edit_product_ui):
+            for values in invalid_values:
+                with self.subTest(operation=save.__name__, values=values):
+                    self.error.reset_mock()
+                    self.info.reset_mock()
+                    fill_product(self.ui, **{"p_code": "NUEVA-VARIANTE", **values})
+                    save()
+                    self.error.assert_called_once()
+                    self.info.assert_not_called()
+                    self.assertEqual(self.ui.selected_product_id, product_id)
+                    for table in tables:
+                        self.assertEqual(
+                            [tuple(row) for row in self.db.query(f"SELECT * FROM {table} ORDER BY id")],
+                            original[table],
+                        )
 
     @tc("STS_PRO_01")
     def test_codigo_duplicado_no_crea_otra_variante(self):
