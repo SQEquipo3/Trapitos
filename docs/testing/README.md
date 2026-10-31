@@ -54,6 +54,8 @@ Abre un issue con la plantilla **«Defecto (bug)»**. Pon la label `bug`, el TC 
 
 Son los que ejecuta una persona, como el cliente en las pruebas de aceptación, o los que necesitan varias máquinas. Viven en `docs/testing/manuales.yml` con los mismos campos que el docstring. Al ejecutarlos, llenen `manual_result` (`PASSED`/`FAILED`), `executed_by` y `executed_on`. Si un bug impide ejecutarlo, pongan `blocked_by: "#<issue>"`.
 
+Para los cinco casos de [#75](https://github.com/SQEquipo3/Trapitos/issues/75), usar el [guion de aceptación manual](ACEPTACION_MANUAL.md) y la [plantilla de registro](REGISTRO_ACEPTACION.md). Incluyen preparación sin internet, datos del recorrido con el cliente de [#60](https://github.com/SQEquipo3/Trapitos/issues/60), mediciones y condiciones de desbloqueo de #57 y #56. La preparación no se registra como ejecución ni como aprobación.
+
 ## Estructura
 
 ```
@@ -67,6 +69,10 @@ tools/crear_issues.py        crea las historias de prueba en GitHub (historias.y
 ```
 
 Los archivos generados se llaman `SW_Test_Plan_<Team>_<Proyecto>.xlsx`, `TC_Design_…xlsx` y `SWT_summary_report_…xlsx`, y se guardan con las gráficas en `entregables/`.
+
+La entrega de [#61](https://github.com/SQEquipo3/Trapitos/issues/61) comprende los tres Excel. La evidencia de cada ejecución manual se guarda en `docs/testing/evidencias/`, como indica el [guion de aceptación manual](ACEPTACION_MANUAL.md).
+
+La [ejecución del 29 de octubre de 2026](evidencias/2026-10-29/README.md) registra los resultados de ATS_INS_01 y ATS_UX_01 con el cliente.
 
 ## Generarlos en tu computadora
 

@@ -501,6 +501,8 @@ def construir_plan(cat, k, fecha, out: Path, tpl: Path):
             res = f"Ejecución automática {c['date'].isoformat()}: {c['n_tests']} prueba(s) pytest.\n{nodos}"
         elif c["status"] == "BLOCKED":
             res = f"Bloqueado por {c['blocked_by']}; no ejecutable hasta resolverlo."
+        elif c["status"] in ("PASSED", "FAILED"):
+            res = f"Ejecución manual {c['date'].isoformat()}: {c['status']}. Responsable: {c['tester']}."
         else:
             res = f"Pendiente de ejecución manual (planeada: {c['date'].isoformat()}). Responsable: {c['tester']}."
         pre = f"Precondiciones:\n-{c['pre']}\n\nResultado de ejecución:\n{res}"

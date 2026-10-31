@@ -1,0 +1,121 @@
+{
+  "tipo_registro": "Resumen de resultados funcionales",
+  "verificacion": {
+    "productos": [
+      {
+        "id": 7,
+        "code": "ACEP-NUEVO-01",
+        "name": "Blusa nueva",
+        "category": "Ropa",
+        "size": "M",
+        "color": "Rojo",
+        "purchase_price": 80,
+        "sale_price": 200,
+        "stock": 5,
+        "entry_date": "2026-10-29"
+      },
+      {
+        "id": 6,
+        "code": "ACEP-PROMO-01",
+        "name": "Blusa de prueba",
+        "category": "Ropa",
+        "size": "M",
+        "color": "Azul",
+        "purchase_price": 80,
+        "sale_price": 200,
+        "stock": 8,
+        "entry_date": "2026-10-29"
+      }
+    ],
+    "ventas": [
+      {
+        "id": 11,
+        "sale_datetime": null,
+        "customer_id": null,
+        "employee_id": 1,
+        "payment_method": "Efectivo",
+        "subtotal": 300,
+        "sale_discount_percent": 0,
+        "discount_amount": 0,
+        "total": 300,
+        "status": "ACTIVA"
+      }
+    ],
+    "lineas": [
+      {
+        "id": 21,
+        "sale_id": 11,
+        "product_id": 6,
+        "quantity": 2,
+        "unit_price": 200,
+        "promo_discount_percent": 25,
+        "line_total": 300
+      }
+    ],
+    "movimientos": [
+      {
+        "id": 41,
+        "product_id": 6,
+        "movement_type": "ENTRADA",
+        "quantity": 10,
+        "movement_datetime": null,
+        "reason": "Alta inicial de producto",
+        "related_sale_id": null
+      },
+      {
+        "id": 42,
+        "product_id": 7,
+        "movement_type": "ENTRADA",
+        "quantity": 5,
+        "movement_datetime": null,
+        "reason": "Alta inicial de producto",
+        "related_sale_id": null
+      },
+      {
+        "id": 43,
+        "product_id": 6,
+        "movement_type": "SALIDA",
+        "quantity": -2,
+        "movement_datetime": null,
+        "reason": "Venta registrada",
+        "related_sale_id": 11
+      }
+    ]
+  },
+  "precondiciones": {
+    "productos": [
+      {
+        "code": "ACEP-PROMO-01",
+        "name": "Blusa de prueba",
+        "stock": 10,
+        "sale_price": 200
+      }
+    ],
+    "promociones": [
+      {
+        "code": "ACEP-PROMO-01",
+        "discount_percent": 25,
+        "start_date": "2026-10-29",
+        "end_date": "2026-11-05"
+      }
+    ],
+    "ventas_previas": 10
+  },
+  "sha256_verificacion_fuente": "c04af456e2e7f8e185977fa24079731a8078cd3719b4234101b2dd37129dda0e",
+  "sha256_precondiciones_fuente": "7fe2535a569165ed4184ee5d16c29d39c63977fc1c75e122cff7241968ceae56",
+  "sesion_manual": {
+    "fecha": "2026-10-29",
+    "zona_horaria": "America/Mexico_City",
+    "inicio_sesion": "20:30",
+    "fin_sesion": "20:40",
+    "duracion_sesion_minutos": 10,
+    "registro_y_venta_segundos": 60,
+    "fuente": "registro_manual.json"
+  },
+  "referencia_temporal": {
+    "fuente": "Registro manual de la sesión",
+    "estado_reloj_equipo": "Desajustado",
+    "horas_exactas_por_operacion": null
+  },
+  "sha256_registro_funcional_original": "b17faf3588070ef14f30714ae79cbadc3742a237c8872f476ebacfa5ae38d9d9"
+}
