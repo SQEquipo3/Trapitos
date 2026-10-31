@@ -72,9 +72,7 @@ Los archivos generados se llaman `SW_Test_Plan_<Team>_<Proyecto>.xlsx`, `TC_Desi
 
 La entrega de [#61](https://github.com/SQEquipo3/Trapitos/issues/61) comprende los tres Excel. La evidencia de cada ejecución manual se guarda en `docs/testing/evidencias/`, como indica el [guion de aceptación manual](ACEPTACION_MANUAL.md).
 
-Las [sesiones del 29 de octubre de 2026](evidencias/2026-10-29/README.md) se registran en `sesiones_manuales.yml` y aparecen en la hoja «Sesiones manuales» de los tres Excel. La duración total de cada sesión se distingue del tiempo de registro utilizado para evaluar ATS_UX_01.
-
-La [validación manual complementaria de permisos](evidencias/2026-10-30/ATS_SEG_01.md) registra la ejecución de ATS_SEG_01 por Elizabeth Barajas en un PC externo y la comprobación de correspondencia con la versión publicada.
+La [ejecución del 29 de octubre de 2026](evidencias/2026-10-29/README.md) registra los resultados de ATS_INS_01 y ATS_UX_01 con el cliente.
 
 ## Generarlos en tu computadora
 

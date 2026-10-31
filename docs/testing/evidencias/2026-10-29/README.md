@@ -16,6 +16,4 @@ Antes de la prueba se dio una explicación breve de las funcionalidades añadida
 
 ATS_SEG_01 permanece bloqueado por [#57](https://github.com/SQEquipo3/Trapitos/issues/57). ATS_VD_08 y ATS_VD_09 permanecen bloqueados por [#56](https://github.com/SQEquipo3/Trapitos/issues/56).
 
-La [validación manual complementaria de permisos](../2026-10-30/ATS_SEG_01.md), ejecutada por Elizabeth Barajas en otro PC, tiene resultado satisfactorio en esa instalación. Su correspondencia con el código publicado del PR #80 queda pendiente de identificar; el registro distingue ambas comprobaciones.
-
-Datos: [sesiones_manuales.yml](../../sesiones_manuales.yml). Estados: [manuales.yml](../../manuales.yml). Referencias: [#60](https://github.com/SQEquipo3/Trapitos/issues/60) y [#75](https://github.com/SQEquipo3/Trapitos/issues/75).
+Estados: [manuales.yml](../../manuales.yml). Referencias: [#60](https://github.com/SQEquipo3/Trapitos/issues/60) y [#75](https://github.com/SQEquipo3/Trapitos/issues/75).
