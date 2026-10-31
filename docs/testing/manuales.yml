@@ -48,7 +48,7 @@
   manual_result: PASSED
   executed_by: Carlos Fonseca
   executed_on: '2026-10-29'
-  comments: 'Carlos Fonseca, cliente principal con conocimiento previo de los requisitos, completó el registro y la venta en 60 segundos según el cronometraje manual. Explicación breve inicial de las funcionalidades, el estado, la tarea y los criterios de medición, sin explicar el funcionamiento de la aplicación ni indicar pantallas, menús o botones (notas de la facilitadora); sin ayuda durante el registro y la venta. Funcionamiento sin internet satisfactorio, sin incidencias. Versión: b93812d. Evidencia: evidencias/2026-10-29/Carlos Fonseca.md.'
+  comments: 'Carlos Fonseca, cliente principal con conocimiento previo de los requisitos, completó el registro y la venta en 60 segundos según el cronometraje manual. Explicación breve inicial de las funcionalidades, el estado, la tarea y los criterios de medición, sin explicar el funcionamiento de la aplicación ni indicar pantallas, menús o botones; sin ayuda durante el registro y la venta. Funcionamiento sin internet satisfactorio, sin incidencias. Versión: b93812d. Evidencia: evidencias/2026-10-29/Carlos Fonseca.md.'
 
 - id: ATS_SEG_01
   level: ATS

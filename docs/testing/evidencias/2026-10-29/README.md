@@ -6,7 +6,7 @@ La sesión se realizó en un PC limpio, sin base de datos previa y sin acceso a 
 | --- | --- | --- | --- | --- | --- |
 | Carlos Fonseca | 20:30–20:40 | 10 min | 60 s | Aprobado | Aprobado |
 
-Antes de la prueba se dio una explicación breve de las funcionalidades añadidas, el estado del proyecto, la tarea a realizar, en qué consistía la prueba y los criterios de medición. Según las notas manuscritas de la facilitadora, no se explicó el funcionamiento de la aplicación ni se indicaron pantallas, menús o botones. El registro y la venta se completaron sin asistencia. Carlos Fonseca es el cliente principal y conocía previamente los requisitos. Los horarios corresponden al registro manual de la sesión, en America/Mexico_City.
+Antes de la prueba se dio una explicación breve de las funcionalidades añadidas, el estado del proyecto, la tarea a realizar, en qué consistía la prueba y los criterios de medición. No se explicó el funcionamiento de la aplicación ni se indicaron pantallas, menús o botones. El registro y la venta se completaron sin asistencia. Carlos Fonseca es el cliente principal y conocía previamente los requisitos. Los horarios corresponden al registro manual de la sesión, en America/Mexico_City.
 
 ## Registros y evidencias
 
