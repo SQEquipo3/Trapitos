@@ -69,25 +69,28 @@
   name: Permisos por rol de empleado (brecha B-04)
   reqs:
   - SEG-01
-  blocked_by: '#57'
   objective: >-
-    Comprobar que un empleado con rol Vendedor no puede administrar empleados (crear, editar ni borrar
-    usuarios). Hoy el rol se guarda en employees.role con empleados_repo.guardar(), pero App
-    (mis_trapitos/ui/app.py) crea las mismas pestañas para cualquier rol: no hay autorización efectiva.
+    Comprobar que un empleado con rol Vendedor no puede administrar empleados (crear, editar ni ver
+    usuarios), mientras que Administrador o Propietario sí. La autorización vive en
+    mis_trapitos/services/empleados.py (puede_administrar / exigir_permiso) y la usa la pestaña
+    Empleados de ContactosUI (mis_trapitos/ui/contactos.py) con el usuario de la sesión.
   pre: >-
-    Aplicación instalada. En Contactos y usuarios → Empleados existen un usuario con rol Administrador y
-    otro con rol Vendedor, ambos con contraseña conocida.
+    Aplicación instalada. En Contactos y usuarios → Empleados existen un usuario con rol Administrador o
+    Propietario y otro con rol Vendedor, ambos con contraseña conocida.
   steps:
   - Iniciar sesión con el usuario Vendedor.
   - Abrir el módulo Contactos y usuarios y la pestaña Empleados.
-  - Intentar crear un empleado nuevo con el botón Guardar empleado.
-  - Intentar editar el rol del propio Vendedor a Administrador.
+  - Cerrar sesión e iniciar sesión como Administrador o Propietario.
+  - En la pestaña Empleados, crear un empleado nuevo con el botón Guardar empleado y luego editarlo.
+  - Cerrar sesión y volver a entrar como Vendedor.
+  - Abrir nuevamente la pestaña Empleados.
   expected:
-  - La pestaña Empleados no está disponible para el Vendedor, o muestra «Acceso denegado».
-  - No se crea ni se modifica ningún empleado.
+  - El Vendedor ve el mensaje «Acceso denegado», sin formulario ni listado de empleados.
+  - El Administrador o Propietario puede crear y editar empleados.
+  - El cambio de sesión no conserva los permisos del usuario anterior.
   comments: >-
-    Bloqueado por la brecha B-04 del SDD (issue #57): el rol todavía no tiene autorización efectiva. Al
-    implementarse, se puede automatizar con una prueba como las de tests/test_login.py.
+    Corrección de la brecha B-04 del SDD (issue #57). Pendiente de ejecución manual. Regresiones
+    automatizadas: STS_SEG_01 e ITS_SEG_01 (tests/test_permisos_empleados.py).
 
 - id: ATS_VD_08
   level: ATS
