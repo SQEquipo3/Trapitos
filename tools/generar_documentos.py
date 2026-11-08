@@ -287,7 +287,8 @@ PAL = {"PASSED": "#2E7D32", "FAILED": "#C62828", "BLOCKED": "#EF6C00", "NOT_EXEC
 MODCOL = ["#1F4E79", "#2E86AB", "#F6AE2D", "#8E6C8A", "#5C8A4D", "#B5543C"]
 
 
-def graficas(cat, k, cov, outdir: Path):
+def graficas(k, outdir: Path):
+    """Diagramas del Test Report: casos de prueba por estado y por módulo (los que pidió el maestro)."""
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
@@ -315,42 +316,6 @@ def graficas(cat, k, cov, outdir: Path):
         [k["status"][s] for s in etiq], [PAL[s] for s in etiq])
     mods = list(k["por_modulo"])
     pie("pie_tc_modulo", "Casos de prueba por módulo", mods, [k["por_modulo"][m] for m in mods], MODCOL)
-    tm = list(k["tests_modulo"])
-    pie("pie_pytest_modulo", "Pruebas pytest ejecutadas por módulo", tm, [k["tests_modulo"][m] for m in tm], MODCOL)
-    niveles = cat["meta"]["levels"]
-    pie("pie_tc_nivel", "Casos de prueba por nivel", list(niveles.values()),
-        [sum(c["level"] == l for c in cat["cases"]) for l in niveles], MODCOL)
-    # barras apiladas por módulo y estado
-    fig, ax = plt.subplots(figsize=(6.4, 3.6), dpi=130)
-    bottom = [0] * len(mods)
-    for s in etiq:
-        vals = [sum(1 for c in cat["cases"] if c["module"] == m and c["status"] == s) for m in mods]
-        ax.bar(mods, vals, bottom=bottom, color=PAL[s], label=etiq[s], edgecolor="white")
-        bottom = [a + b for a, b in zip(bottom, vals)]
-    ax.set_title("Estado de los casos de prueba por módulo", fontsize=11, loc="left", fontweight="bold")
-    ax.legend(frameon=False, fontsize=8, ncol=4, loc="upper center", bbox_to_anchor=(0.5, -0.12))
-    ax.spines[["top", "right"]].set_visible(False)
-    fig.tight_layout()
-    p = outdir / "bar_estado_modulo.png"
-    fig.savefig(p)
-    plt.close(fig)
-    pngs["bar_estado_modulo"] = p
-    if cov:
-        files = sorted(((f.replace("mis_trapitos/", ""), d["summary"]["percent_covered"]) for f, d in cov["files"].items()),
-                       key=lambda x: x[1])
-        fig, ax = plt.subplots(figsize=(6.4, max(3, 0.28 * len(files) + 1)), dpi=130)
-        ax.barh([f for f, _ in files], [v for _, v in files], color="#1F4E79")
-        ax.axvline(cov["totals"]["percent_covered"], color="#C62828", ls="--", lw=1)
-        ax.set_xlim(0, 100)
-        ax.set_title(f"Cobertura de líneas por archivo (total {cov['totals']['percent_covered']:.1f}%)",
-                     fontsize=11, loc="left", fontweight="bold")
-        ax.tick_params(axis="y", labelsize=7)
-        ax.spines[["top", "right"]].set_visible(False)
-        fig.tight_layout()
-        p = outdir / "bar_cobertura.png"
-        fig.savefig(p)
-        plt.close(fig)
-        pngs["bar_cobertura"] = p
     return pngs
 
 # --------------------------------------------------------------------------- utilidades Excel
@@ -404,6 +369,36 @@ def ajustar_impresion(wb):
 
 def numerar(items):
     return "\n".join(f"{i}.- {t}" for i, t in enumerate(items, 1))
+
+
+def comentarios_tc(c):
+    """Campo «Comments» de la hoja del TC: comentarios de la ficha + dónde vive el TC y cómo correrlo."""
+    partes = [c["comments"]] if c.get("comments") else []
+    partes.append("Requisitos que cubre: " + ", ".join(c["reqs"]) + ".")
+    if c.get("tests"):
+        ui = any(t.split("::")[0] in PRUEBAS_CON_PANTALLA for t in c["tests"])
+        partes.append(f"Ficha definida en {c['definido_en']} (decorador @tc + docstring). "
+                      f"Pruebas pytest que lo implementan ({len(c['tests'])}):\n"
+                      + "\n".join(f"  · {t}" for t in c["tests"]))
+        partes.append("Para ejecutarlo solo:\n  " + ("xvfb-run -a " if ui else "") + "pytest " + " ".join(c["tests"])
+                      + ("\n  (usa Tkinter: en Windows/macOS sin xvfb-run)" if ui else ""))
+    else:
+        partes.append("TC manual: se define y se registra su resultado en docs/testing/manuales.yml "
+                      "(manual_result, executed_by, executed_on o blocked_by).")
+    return "\n\n".join(partes)
+
+
+# Archivos de prueba que abren ventanas Tk (en Linux sin pantalla necesitan xvfb-run).
+PRUEBAS_CON_PANTALLA = {"tests/test_login.py", "tests/test_ui_layout.py", "tests/test_ui_productos.py",
+                        "tests/test_promociones_devoluciones.py", "tests/test_conformidad.py"}
+
+# Prefijos de módulo en los ids de TC (NIVEL_MODULO_NN), para la guía de la hoja Strategy.
+PREFIJOS = {"VEN": "ventas", "PRO": "productos", "INV": "inventario / kardex", "CON": "contactos (clientes, proveedores, empleados)",
+            "REP": "reportes", "SEG": "seguridad / contraseñas", "UTL": "utilidades (utils.py)", "LOG": "login y sesión",
+            "PRM": "promociones", "DEV": "devoluciones y cancelaciones", "UI": "distribución de pantallas",
+            "CAR": "carga", "REC": "recuperación", "FMT": "formatos de fecha", "CSV": "archivos CSV",
+            "BD": "integridad de la base", "SDD": "contratos del SDD", "VD": "escenarios de validación VD-xx del SDD",
+            "INS": "instalación", "UX": "usabilidad"}
 
 
 def poner(ws, ref, valor, wrap=True, h=None):
@@ -509,7 +504,7 @@ def construir_plan(cat, k, fecha, out: Path, tpl: Path):
         poner(ws, "B17", pre)
         if c["status"] in ("PASSED", "FAILED"):
             ws["D17"].value = c["status"]
-        poner(ws, "B19", c.get("comments", "") or ("Caso derivado de " + ", ".join(c["reqs"]) + "."))
+        poner(ws, "B19", comentarios_tc(c))
         poner(ws, "B21", meta["references"])
         for ref, txt, w in (("B4", c["name"], 55), ("B7", ", ".join(c["reqs"]), 75), ("B9", c["objective"], 80), ("B11", env, 80),
                             ("B13", numerar(c["steps"]), 80), ("B15", numerar(c["expected"]), 80), ("B17", pre, 70),
@@ -592,6 +587,42 @@ def construir_strategy(wb, cat, k, fecha):
          "Mitigación: BD temporal, fechas relativas a hoy, defectos y TC bloqueados documentados."),
         ("12. Calendario", f"Emisión del plan: {fecha.isoformat()}. TC manuales planeados para: {meta['planned_date']}.", ""),
     ])
+    titulo("Guía rápida para quien llega nuevo al proyecto")
+    prefijos = sorted({c["id"].split("_")[1] for c in cat["cases"]})
+    tabla(["Tema", "Explicación", "Dónde verlo"], [
+        ("¿Qué es el sistema?", f"{meta['project_title']} es el punto de venta e inventario de una tienda de ropa: productos con "
+                                "variantes de talla/color, ventas con promociones y descuentos, devoluciones y cancelaciones, "
+                                "clientes, proveedores, empleados y 12 reportes. Es una aplicación de escritorio (Python + Tkinter) "
+                                "con una base SQLite local.",
+         "main.py arranca App (mis_trapitos/ui/app.py). Requisitos en docs/SDD.md, arquitectura en docs/SAD.md."),
+        ("Capas del código", "1) Interfaz: mis_trapitos/ui/ — una clase por pantalla (ProductosUI, VentasUI, PromocionesUI, "
+                             "DevolucionesUI, ReportesUI, Login, App).\n2) Reglas de negocio: mis_trapitos/services/ — "
+                             "ventas.registrar() y ServicioVentas (carrito), devoluciones.devolver() y cancelar_venta().\n"
+                             "3) Datos: mis_trapitos/data/repositories/ — el SQL de cada entidad (productos.guardar(), "
+                             "promociones.porcentaje_vigente(), reportes.ejecutar(), clientes.historial(), …).\n"
+                             "4) Conexión: mis_trapitos/data/database.py (Database, transaction()) y schema.py (tablas y restricciones).",
+         "Los pasos de cada TC nombran la función exacta que se llama; búscala con el nombre en esas carpetas."),
+        ("Cómo leer el id de un TC", "NIVEL_MÓDULO_NN. Nivel: " + ", ".join(f"{k} = {v}" for k, v in meta["levels"].items())
+         + ".\nMódulo: " + "; ".join(f"{p} = {PREFIJOS.get(p, p)}" for p in prefijos) + ".",
+         "Cada TC tiene su hoja con ese nombre en este archivo y en el TC Design."),
+        ("De dónde sale cada hoja de TC", "Los TC automatizados (método TA) son pruebas pytest en tests/: la que lleva el decorador "
+                                          "@tc(id, nivel=…, modulo=…, reqs=…, nombre=…) tiene en su docstring el objetivo, las "
+                                          "precondiciones, los pasos y el resultado esperado que aparecen en la hoja. Las demás "
+                                          "pruebas del mismo TC solo llevan @tc(id). Los TC manuales viven en docs/testing/manuales.yml.",
+         "Campo «Comments» de cada hoja: archivo, pruebas que lo implementan y el comando para correrlo solo."),
+        ("Datos de prueba (fixtures)", "Ninguna prueba toca mis_trapitos.db. tests/conftest.py da: db (base SQLite temporal y vacía), "
+                                       "empleado (usuario 'vende' / '1234'), make_product (crea productos; por omisión stock 10 y "
+                                       "precio $200), dias(n) (fecha relativa a hoy) y stock(db, id). Algunas pruebas tienen su propio "
+                                       "conjunto de datos: mundo (tests/test_reportes.py) y operaciones (tests/test_conformidad.py).",
+         "Las pruebas de interfaz crean ventanas Tk ocultas; en CI corren con Xvfb."),
+        ("Estados del resultado", "PASSED: todas sus pruebas pasaron. FAILED: alguna falló; incluye las marcadas "
+                                  "xfail(strict) por un bug conocido, que se ligan a su issue. BLOCKED: TC manual que no se "
+                                  "puede ejecutar por un issue (blocked_by). NOT_EXECUTED: manual aún sin ejecutar.",
+         "Los bugs son issues de GitHub con label «bug»; salen en la hoja «Bug report» del Test Report."),
+        ("Reproducir estos documentos", "pip install -r requirements-dev.txt\nxvfb-run -a pytest --cov=mis_trapitos "
+                                        "--cov-report=json:reports/coverage.json\npython tools/generar_documentos.py",
+         "docs/testing/README.md explica cómo agregar un TC, reportar un bug y registrar un TC manual."),
+    ])
     titulo("Matriz de trazabilidad requisito → casos de prueba")
     ids_extra = meta.get("other_ids", {})
     filas = []
@@ -645,11 +676,7 @@ def construir_reporte(cat, k, cov, fecha, pngs, out: Path, tpl: Path):
         s[f"C{r}"]._style, s[f"D{r}"]._style = copy.copy(estilo_c), copy.copy(estilo_d)
         r += 1
     filas = [("Pass Percentage of the defects (TC passed / executed)", k["pass_pct"], estilo_pct_c, estilo_pct_d, pctfmt),
-             ("Number of critical defects (High, abiertos)", k["critical"], estilo_crit_c, estilo_crit_d, "General"),
-             ("Total pytest tests executed (passed / known-defect xfail / failed)",
-              f"{k['n_tests']} ({k['tests_res']['passed']} / {k['tests_res']['known_defect']} / {k['tests_res']['failed']})", estilo_crit_c, estilo_crit_d, "General")]
-    if cov:
-        filas.append(("Code coverage (line, pytest-cov)", cov["totals"]["percent_covered"] / 100, estilo_pct_c, estilo_pct_d, "0.0%"))
+             ("Number of critical defects (High, abiertos)", k["critical"], estilo_crit_c, estilo_crit_d, "General")]
     for t, v, sc, sd, nf in filas:
         s[f"C{r}"], s[f"D{r}"] = t, v
         s[f"C{r}"]._style, s[f"D{r}"]._style = copy.copy(sc), copy.copy(sd)
@@ -661,8 +688,7 @@ def construir_reporte(cat, k, cov, fecha, pngs, out: Path, tpl: Path):
     fila_img = r + 2
     s[f"B{fila_img - 1}"] = "Diagramas"
     s[f"B{fila_img - 1}"].font = Font(bold=True, size=12, color="1F4E79")
-    orden = [("pie_total_tc", "B", 0), ("pie_tc_modulo", "E", 0), ("pie_pytest_modulo", "B", 1), ("pie_tc_nivel", "E", 1),
-             ("bar_estado_modulo", "B", 2), ("bar_cobertura", "E", 2)]
+    orden = [("pie_total_tc", "B", 0), ("pie_tc_modulo", "E", 0)]
     for name, col, lvl in orden:
         if name not in pngs:
             continue
@@ -737,7 +763,7 @@ def main(argv=None):
     k = conteos(cat)
     out = Path(a.out)
     sufijo = f"{cat['meta']['team']}_{cat['meta']['project']}"
-    pngs = graficas(cat, k, cov, out / "diagramas")
+    pngs = graficas(k, out / "diagramas")
     plan = out / f"SW_Test_Plan_{sufijo}.xlsx"
     construir_plan(cat, k, fecha, plan, TPL / "SW_Test_Plan__Team0X___ProjectName_.xlsx")
     construir_tc_design(plan, out / f"TC_Design_{sufijo}.xlsx")

@@ -32,6 +32,21 @@ def test_devolucion_suma_al_stock(db, empleado, make_product):
     ...
 ```
 
+### Cómo escribir la ficha para que la entienda alguien nuevo
+
+La ficha es lo que leen el maestro y cualquier persona que llegue al proyecto, así que debe entenderse sin abrir el código:
+
+* **Objetivo:** qué regla de negocio se comprueba, por qué importa y qué función se prueba, con su archivo. Ejemplo: «`devolver()` de `mis_trapitos/services/devoluciones.py` suma al stock y registra un movimiento DEVOLUCION».
+* **Precondiciones:** qué fixtures usa (`db`, `empleado`, `make_product`, `mundo`…) y con qué datos (stock, precios, fechas).
+* **Pasos:** una acción por línea, nombrando la función que se llama y sus argumentos clave: «Llamar `devoluciones_srv.devolver(db, sale_id, pid, 2, 'x')`». Si el TC tiene varias pruebas, indica qué paso hace cada una («En `test_…`: …»).
+* **Esperado:** valores exactos (stock 7, total 540, el mensaje de error textual), no «funciona bien».
+* **Comentarios:** bugs o brechas relacionadas y cualquier dato que ayude a mantener la prueba.
+* No empieces una línea de continuación con `- ` ni con `Pasos:`/`Esperado:`: el lector las toma como un paso o una sección nueva.
+
+El generador agrega solo, en el campo *Comments* de cada hoja, el archivo donde está la ficha, las pruebas que implementan el TC y el comando para correrlo.
+
+### Reglas
+
 * **Una sola prueba por TC** lleva los datos (`nivel`, `modulo`, `reqs`, `nombre`) y el docstring. Las demás pruebas del mismo TC solo llevan `@tc("ITS_VEN_04")`.
 * El docstring es la ficha del Excel. La primera parte es el **objetivo**, después vienen `Precondiciones:`, `Pasos:`, `Esperado:` y, opcional, `Comentarios:`.
 * `@tc` también va sobre una clase de `unittest` y cubre todos sus métodos `test*`.

@@ -25,18 +25,28 @@ def set_entry(entry, value):
 @tc("STS_LOG_01", nivel="STS", modulo="interfaz", reqs=["SEG-01"],
     nombre="Inicio de sesión: credenciales válidas, inválidas y Enter")
 class LoginTest(unittest.TestCase):
-    """La ventana de login autentica una sola vez, rechaza credenciales inválidas y entrega el
-    usuario.
+    """Probar la pantalla de inicio de sesión, la clase Login de mis_trapitos/ui/login.py. Su método
+    submit() lee usuario y contraseña, llama a la función authenticate que recibe (aquí
+    empleados_repo.autenticar) y, si es correcta, llama on_authenticated(usuario) una sola vez. Con
+    credenciales inválidas muestra un error y se queda en el login. SEG-01.
 
-    Precondiciones: Aplicación Tkinter sobre BD temporal.
+    Precondiciones: Ventana Tk real pero oculta (root.withdraw()); en CI corre bajo Xvfb. Base SQLite
+      temporal sin datos de ejemplo (se parchea mis_trapitos.data.database.seed_examples).
+      messagebox.showinfo/showerror se parchean con unittest.mock para revisar los mensajes sin abrir
+      diálogos. Empleado 'admin' con contraseña '1234' y rol Administrador. on_authenticated es un Mock.
     Pasos:
-    - Capturar credenciales válidas y pulsar Entrar
-    - Capturar inválidas
-    - Pulsar Enter en contraseña
+    - test_credenciales_validas_entregan_usuario_autenticado: escribir ' admin ' y ' 1234 ' (con
+      espacios) en username_entry y password_entry y llamar login.submit().
+    - test_credenciales_invalidas_permanecen_en_login: probar ('admin', 'incorrecta'), ('desconocido',
+      '1234') y ('', ''), llamando submit() cada vez; al final entrar con las correctas.
+    - test_enter_en_contrasena_autentica_una_sola_vez: dar foco a password_entry y generar el evento
+      <Return>.
     Esperado:
-    - Se entrega el usuario autenticado
-    - Permanece en login
-    - Autentica exactamente una vez
+    - Con credenciales válidas on_authenticated se llama una vez con id, username 'admin' y role
+      'Administrador' (los espacios se recortan).
+    - Con cada credencial inválida se muestra exactamente un showerror con parent = la ventana de login,
+      no se autentica y el login sigue abierto.
+    - Pulsar Enter autentica exactamente una vez y sin errores.
     """
     def setUp(self):
         directory = tempfile.TemporaryDirectory(prefix="trapitos-login-")
@@ -105,17 +115,28 @@ class LoginTest(unittest.TestCase):
 @tc("STS_LOG_02", nivel="STS", modulo="interfaz", reqs=["SEG-01"],
     nombre="Sesión: cerrar, reabrir y compartir conexión")
 class SessionTest(unittest.TestCase):
-    """Cerrar sesión limpia el estado, conserva el inventario y libera la conexión.
+    """Probar el ciclo de sesión de la ventana principal App (mis_trapitos/ui/app.py): al entrar se crean
+    las 7 pestañas de módulos usando la misma conexión Database; App.show_login() (cerrar sesión)
+    destruye los módulos y limpia carrito y selección sin tocar el inventario; App.on_close() cierra la
+    conexión. SEG-01.
 
-    Precondiciones: Aplicación iniciada.
+    Precondiciones: Ventana Tk real pero oculta (root.withdraw()); en CI corre bajo Xvfb. Base SQLite
+      temporal sin datos de ejemplo (se parchea mis_trapitos.data.database.seed_examples).
+      messagebox.showinfo/showerror se parchean con unittest.mock para revisar los mensajes sin abrir
+      diálogos. App(db_path=...) con empleados 'admin'/'1234' y 'ventas'/'5678'.
     Pasos:
-    - Cerrar y reabrir sesión
-    - Cerrar la aplicación
-    - Verificar conexión y raíz compartidas
+    - test_login_y_modulos_comparten_conexion_y_raiz: iniciar sesión como admin con Database parcheado
+      para fallar si se abre otra conexión; revisar main_notebook.tabs() y el .db de cada módulo.
+    - test_cerrar_y_reabrir_sesion_limpia_estado_y_conserva_inventario: crear un producto, agregar 2
+      piezas al carrito con ventas_ui.servicio.agregar_producto(), llamar app.show_login() y entrar como
+      'ventas'.
+    - test_cerrar_aplicacion_libera_la_conexion: llamar app.on_close() e intentar db.scalar('SELECT 1').
     Esperado:
-    - Estado limpio e inventario intacto
-    - Conexión liberada
-    - Login y módulos comparten conexión
+    - Hay 7 pestañas; productos_ui, contactos_ui, ventas_ui, promociones_ui y devoluciones_ui usan el
+      mismo db y la misma ventana raíz; no se abre otra conexión.
+    - Al cerrar sesión user y los módulos quedan en None y sus widgets destruidos; al reentrar los
+      módulos son nuevos, el carrito está vacío, no hay producto seleccionado y el stock sigue en 10.
+    - db.close() se llama una vez y después cualquier consulta levanta sqlite3.ProgrammingError.
     """
     def setUp(self):
         directory = tempfile.TemporaryDirectory(prefix="trapitos-session-")
@@ -202,15 +223,19 @@ class SessionTest(unittest.TestCase):
 @tc("STS_LOG_03", nivel="STS", modulo="interfaz", reqs=["GEN-01"],
     nombre="Arranque de la aplicación (main)")
 class StartupTest(unittest.TestCase):
-    """Importar main no abre ventana; ejecutarlo abre una sola aplicación y un bucle.
+    """Probar el punto de entrada main.py: importarlo (por ejemplo, desde una prueba) no debe abrir
+    ventanas ni conexiones; ejecutarlo como programa debe crear una sola App y llamar su mainloop().
+    GEN-01.
 
-    Precondiciones: N/A
+    Precondiciones: Ninguna. App, tk.Tk y sqlite3.connect se parchean con unittest.mock.
     Pasos:
-    - Importar main
-    - Ejecutar main()
+    - test_importar_main_no_abre_ventana_conexion_ni_bucle: cargar main.py con importlib sin ejecutarlo
+      como __main__.
+    - test_ejecutar_main_arranca_una_aplicacion_y_un_bucle: ejecutar main.py con runpy.run_path(...,
+      run_name='__main__').
     Esperado:
-    - Sin ventana ni conexión al importar
-    - Una aplicación y un mainloop
+    - Al importar no se llama App, tk.Tk ni sqlite3.connect, y main es una función.
+    - Al ejecutar se llama App() una vez y su mainloop() una vez.
     """
     def setUp(self):
         self.path = Path(__file__).resolve().parents[1] / "main.py"

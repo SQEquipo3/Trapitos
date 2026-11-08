@@ -205,14 +205,30 @@ class LayoutTest(unittest.TestCase):
     @tc("STS_UI_01", nivel="STS", modulo="interfaz", reqs=["RF-06", "RF-01"],
         nombre="Nueve pantallas accesibles en dos tamaños y escalas")
     def test_nueve_pantallas_accesibles_en_dos_tamanos_y_escalas(self):
-        """Todas las pantallas se pueden abrir y sus controles son visibles en distintas
-        resoluciones.
+        """Prueba de interfaz (usabilidad/accesibilidad visual): las nueve pantallas de la aplicación se
+        pueden abrir y todos sus controles se ven completos, sin recortes ni encimados, en dos tamaños
+        de ventana (1060×680 y 1360×840) y dos escalas de pantalla (100 % y 150 %). Cada combinación
+        corre en un subproceso aparte (run_scenario → screen_scenario) para que la escala de Tk no se
+        contamine. RF-06, RF-01.
 
-        Precondiciones: Aplicación completa.
+        Precondiciones: App completa sobre una base temporal con un empleado 'admin' y un producto
+          LAYOUT-01. Se necesita pantalla (Xvfb en CI).
         Pasos:
-        - Recorrer las nueve pantallas en dos tamaños y escalas
+        - Revisar con assert_visible() y assert_legible() los botones, campos y etiquetas del login, e
+          iniciar sesión.
+        - Para cada pantalla de SCREENS (Productos, Ventas, Clientes, Proveedores, Empleados,
+          Promociones, Devoluciones, Reportes, Rastreabilidad), abrirla con su botón de
+          navigation_buttons.
+        - Comprobar que existe su botón principal (por ejemplo 'Registrar venta'), que no hay controles
+          encimados (assert_no_overlaps) y que cada control se alcanza al darle foco (assert_reachable).
+        - En cada tabla Treeview insertar 30 filas, desplazarse al final y comprobar con
+          assert_table_accessible() que la última fila y columna son alcanzables.
+        - Repetir en las 4 combinaciones de tamaño y escala.
         Esperado:
-        - Sin controles recortados ni errores
+        - Ningún control queda oculto, recortado ni encimado; los campos tienen ancho para al menos 10
+          dígitos.
+        - Cada tabla muestra al menos 3 filas y su última fila y columna son alcanzables.
+        - No aparece ningún messagebox de error ni excepción en callbacks de Tkinter.
         """
         for scale in (96 / 72, 144 / 72):
             for size in ((1060, 680), (1360, 840)):
@@ -249,14 +265,24 @@ class LayoutTest(unittest.TestCase):
     @tc("STS_UI_02", nivel="STS", modulo="interfaz", reqs=["RF-06"],
         nombre="Redimensionar y navegar conserva captura, selección y carrito")
     def test_redimensionar_y_navegar_conserva_captura_seleccion_y_carrito(self):
-        """El estado de captura sobrevive a cambios de tamaño y navegación.
+        """Comprobar que cambiar el tamaño de la ventana o moverse entre pantallas no borra lo que el
+        usuario estaba capturando: la edición pendiente de un producto, su selección en la tabla, un
+        cliente sin guardar, un descuento de promoción y el carrito de ventas. Al cerrar sesión, en
+        cambio, sí debe limpiarse. RF-06.
 
-        Precondiciones: Carrito con productos.
+        Precondiciones: App completa con un producto LAYOUT-01 (stock 20). Corre en subproceso
+          (resize_scenario) con escala 100 % y 150 %.
         Pasos:
-        - Redimensionar la ventana
-        - Cambiar de pantalla y volver
+        - Iniciar sesión, seleccionar el producto y escribir 'Edición pendiente' en p_name.
+        - Escribir 'Cliente sin guardar' en contactos_ui.c_name y '17' en promociones_ui.pr_discount;
+          agregar 2 piezas con ventas_ui.servicio.agregar_producto('LAYOUT-01', 2).
+        - Cambiar el tamaño a 1060×680, 1360×840 y 1060×680; en cada uno recorrer las nueve pantallas.
+        - Cerrar sesión con app.show_login() y volver a entrar.
         Esperado:
-        - Captura, selección y carrito intactos
+        - Después de cada cambio se conservan la edición, la selección, el cliente, el descuento y el
+          carrito con 2 piezas.
+        - Tras cerrar y reabrir sesión el carrito está vacío, no hay producto seleccionado y el stock
+          sigue en 20.
         """
         for scale in (96 / 72, 144 / 72):
             with self.subTest(scale=scale):

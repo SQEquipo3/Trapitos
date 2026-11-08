@@ -2,6 +2,8 @@
 # Al ejecutarlo, llena manual_result (PASSED o FAILED), executed_by y executed_on (AAAA-MM-DD).
 # Si no se puede ejecutar por un bug, blocked_by: "#<número del issue con label bug>".
 # Los TC automatizados NO van aquí: viven en tests/ con el decorador @tc (ver tests/tc.py).
+# Escribe los pasos como instrucciones que alguien nuevo pueda seguir sin preguntar: qué pantalla,
+# qué botón, qué datos, y qué función del código se ejecuta detrás cuando ayuda a ubicarla.
 - id: ATS_INS_01
   level: ATS
   module: interfaz
@@ -57,14 +59,24 @@
   reqs:
   - SEG-01
   blocked_by: '#57'
-  objective: Un empleado con rol Vendedor no debe poder administrar empleados.
-  pre: Usuarios Administrador y Vendedor.
+  objective: >-
+    Comprobar que un empleado con rol Vendedor no puede administrar empleados (crear, editar ni borrar
+    usuarios). Hoy el rol se guarda en employees.role con empleados_repo.guardar(), pero App
+    (mis_trapitos/ui/app.py) crea las mismas pestañas para cualquier rol: no hay autorización efectiva.
+  pre: >-
+    Aplicación instalada. En Contactos y usuarios → Empleados existen un usuario con rol Administrador y
+    otro con rol Vendedor, ambos con contraseña conocida.
   steps:
-  - Entrar como Vendedor
-  - Intentar abrir la gestión de empleados
+  - Iniciar sesión con el usuario Vendedor.
+  - Abrir el módulo Contactos y usuarios y la pestaña Empleados.
+  - Intentar crear un empleado nuevo con el botón Guardar empleado.
+  - Intentar editar el rol del propio Vendedor a Administrador.
   expected:
-  - Acceso denegado
-  comments: 'Brecha B-04: el rol aún no tiene autorización efectiva.'
+  - La pestaña Empleados no está disponible para el Vendedor, o muestra «Acceso denegado».
+  - No se crea ni se modifica ningún empleado.
+  comments: >-
+    Bloqueado por la brecha B-04 del SDD (issue #57): el rol todavía no tiene autorización efectiva. Al
+    implementarse, se puede automatizar con una prueba como las de tests/test_login.py.
 
 - id: ATS_VD_08
   level: ATS
