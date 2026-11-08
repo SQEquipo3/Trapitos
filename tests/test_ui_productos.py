@@ -100,16 +100,30 @@ class ProductosUITest(TemporaryInventoryTest):
     @tc("STS_PRO_01", nivel="STS", modulo="productos", reqs=["RF-01", "RF-02"],
         nombre="Alta y edición de productos desde la interfaz respetan variantes")
     def test_alta_y_edicion_respetan_existencias_de_cada_variante(self):
-        """El formulario de productos guarda existencias por variante y rechaza códigos duplicados.
+        """Probar el alta y edición de productos desde la pantalla de Productos: add_product_ui() y
+        edit_product_ui() de ProductosUI leen el formulario con collect_product_data(), guardan con
+        productos_repo.guardar() y refrescan la tabla con actualizar_inventario(). Cada variante
+        (talla/color) conserva su propio stock y no se puede repetir un código. RF-01, RF-02.
 
-        Precondiciones: Módulo de productos abierto.
+        Precondiciones: Ventana Tk real pero oculta (root.withdraw()); en CI corre bajo Xvfb. Base
+          SQLite temporal sin datos de ejemplo (se parchea mis_trapitos.data.database.seed_examples).
+          messagebox.showinfo/showerror se parchean con unittest.mock para revisar los mensajes sin abrir
+          diálogos. Pantalla ProductosUI(root, db) de mis_trapitos/ui/productos.py. El helper
+          fill_product() llena los 13 campos del formulario (p_code, p_name, ..., p_image) con
+          BLUSA-M-AZUL, stock 10.
         Pasos:
-        - Capturar y guardar variantes
-        - Editarlas
-        - Intentar código duplicado
+        - Agregar BLUSA-M-AZUL (stock 10) con add_product_ui(); limpiar con clear_product_form() y
+          agregar BLUSA-L-ROJA (stock 6).
+        - Seleccionar BLUSA-M-AZUL en products_tree (helper select_product), cambiar nombre a 'Blusa de
+          algodon' y stock a 12, y llamar edit_product_ui().
+        - Leer la tabla con inventory_rows() y el movimiento AJUSTE del primer producto.
+        - En test_codigo_duplicado_no_crea_otra_variante: agregar BLUSA-M-AZUL y volver a agregarlo con
+          talla L / color Roja.
         Esperado:
-        - Cada variante conserva su stock
-        - No se crea otra variante duplicada
+        - Hay 2 productos distintos; BLUSA-M-AZUL queda con nombre editado y stock 12; BLUSA-L-ROJA
+          conserva stock 6, nombre, talla y color.
+        - Se registra un AJUSTE de +2 para el primer producto.
+        - El código duplicado muestra un error y sigue habiendo 1 producto y 1 movimiento.
         """
         first_id = self.add_product()
         self.ui.clear_product_form()
@@ -143,15 +157,28 @@ class ProductosUITest(TemporaryInventoryTest):
     @tc("STS_PRO_02", nivel="STS", modulo="productos", reqs=["RF-01", "RF-03"],
         nombre="Validaciones del formulario no modifican datos")
     def test_validaciones_no_modifican_producto_ni_movimientos(self):
-        """Datos inválidos o edición sin selección no alteran productos ni movimientos.
+        """Comprobar que las validaciones del formulario de Productos impiden guardar datos inválidos:
+        campos obligatorios vacíos, precios o stock negativos o no numéricos, stock decimal o un
+        proveedor que no existe. Las reglas están en ProductosUI.collect_product_data(); si una falla,
+        edit_product_ui() muestra el error y no llama productos_repo.guardar(). RF-01, RF-03.
 
-        Precondiciones: Producto existente.
+        Precondiciones: Ventana Tk real pero oculta (root.withdraw()); en CI corre bajo Xvfb. Base
+          SQLite temporal sin datos de ejemplo (se parchea mis_trapitos.data.database.seed_examples).
+          messagebox.showinfo/showerror se parchean con unittest.mock para revisar los mensajes sin abrir
+          diálogos. Pantalla ProductosUI(root, db) de mis_trapitos/ui/productos.py. El helper
+          fill_product() llena los 13 campos del formulario (p_code, p_name, ..., p_image) con
+          BLUSA-M-AZUL, stock 10. Un producto ya guardado y seleccionado.
         Pasos:
-        - Capturar datos inválidos y guardar
-        - Guardar edición sin seleccionar producto
+        - Para cada caso, llenar el formulario con fill_product() y llamar edit_product_ui(): código,
+          nombre, categoría, talla o color en blanco; precio de compra −1; precio de venta −1; stock −1;
+          precio 'abc'; stock '1.5'; proveedor 9999.
+        - Después de cada intento comparar el producto en la base y el número de movimientos.
+        - En test_edicion_sin_seleccion_no_guarda_producto: sin seleccionar nada, llenar el formulario y
+          llamar edit_product_ui().
         Esperado:
-        - Mensaje de error
-        - Sin cambios en products ni inventory_movements
+        - Cada intento muestra exactamente un showerror.
+        - El producto y la tabla inventory_movements quedan sin cambios.
+        - La edición sin selección muestra error y no crea ningún producto.
         """
         product_id = self.add_product()
         original = dict(self.db.one("SELECT * FROM products WHERE id=?", (product_id,)))
@@ -197,14 +224,25 @@ class ProductosUITest(TemporaryInventoryTest):
     @tc("STS_PRO_04", nivel="STS", modulo="productos", reqs=["RF-03"],
         nombre="Exportación del inventario a CSV")
     def test_exportacion_csv_conserva_variantes_y_texto(self):
-        """El CSV conserva variantes y caracteres especiales.
+        """Probar el botón Exportar CSV de la pantalla de Productos, ProductosUI.export_inventory_csv():
+        debe escribir todas las variantes del inventario (lo obtiene con reportes_repo.ejecutar(db,
+        'Inventario general actualizado')) sin perder texto con comas o acentos. RF-03.
 
-        Precondiciones: Inventario con variantes.
+        Precondiciones: Ventana Tk real pero oculta (root.withdraw()); en CI corre bajo Xvfb. Base
+          SQLite temporal sin datos de ejemplo (se parchea mis_trapitos.data.database.seed_examples).
+          messagebox.showinfo/showerror se parchean con unittest.mock para revisar los mensajes sin abrir
+          diálogos. Pantalla ProductosUI(root, db) de mis_trapitos/ui/productos.py. El helper
+          fill_product() llena los 13 campos del formulario (p_code, p_name, ..., p_image) con
+          BLUSA-M-AZUL, stock 10. filedialog.asksaveasfilename parcheado para regresar la ruta del
+          archivo.
         Pasos:
-        - Exportar a CSV
-        - Leer el archivo
+        - Agregar 'Blusa, edición especial' (BLUSA-M-AZUL) y BLUSA-L-ROJA con stock 6.
+        - Llamar export_inventory_csv().
+        - Leer el archivo con csv.DictReader.
         Esperado:
-        - Todas las variantes presentes y texto íntegro
+        - El CSV tiene exactamente los códigos BLUSA-M-AZUL y BLUSA-L-ROJA.
+        - El nombre 'Blusa, edición especial' se conserva exacto; BLUSA-L-ROJA tiene stock '6' y talla
+          'L'.
         """
         self.add_product(p_name="Blusa, edición especial")
         self.add_product(p_code="BLUSA-L-ROJA", p_size="L", p_color="Roja", p_stock=6)
@@ -221,17 +259,31 @@ class ProductosUITest(TemporaryInventoryTest):
     @tc("STS_PRO_03", nivel="STS", modulo="productos", reqs=["RF-01"],
         nombre="Imagen de producto: copia, recuperación y archivo inexistente")
     def test_imagen_se_copia_guarda_y_recupera_al_seleccionar(self):
-        """La imagen se copia, se guarda y se recupera; una ruta inexistente no rompe el
-        formulario.
+        """Probar la foto del producto: ProductosUI.choose_product_image() copia la imagen elegida a la
+        carpeta IMAGE_DIR (store_product_image), la muestra en la vista previa (display_image) y guarda
+        la ruta en products.image_path; al volver a seleccionar el producto se recupera. Si la ruta no
+        existe, se muestra un aviso sin romper el formulario. RF-01.
 
-        Precondiciones: Imagen de prueba temporal.
+        Precondiciones: Ventana Tk real pero oculta (root.withdraw()); en CI corre bajo Xvfb. Base
+          SQLite temporal sin datos de ejemplo (se parchea mis_trapitos.data.database.seed_examples).
+          messagebox.showinfo/showerror se parchean con unittest.mock para revisar los mensajes sin abrir
+          diálogos. Pantalla ProductosUI(root, db) de mis_trapitos/ui/productos.py. El helper
+          fill_product() llena los 13 campos del formulario (p_code, p_name, ..., p_image) con
+          BLUSA-M-AZUL, stock 10. Imagen PNG azul de 320×400 creada con Pillow en una carpeta temporal;
+          IMAGE_DIR y filedialog.askopenfilename parcheados.
         Pasos:
-        - Seleccionar imagen y guardar
-        - Reseleccionar producto
-        - Usar ruta inexistente
+        - Llenar el formulario y llamar choose_product_image().
+        - Revisar el archivo copiado (carpeta, tamaño y color) y llamar add_product_ui().
+        - Llamar clear_product_form() y volver a seleccionar el producto con select_product().
+        - En test_imagen_inexistente_muestra_estado_sin_romper_formulario: agregar un producto con
+          p_image apuntando a un archivo que no existe.
         Esperado:
-        - Imagen recuperada al seleccionar
-        - Se muestra estado de error sin excepción
+        - La imagen se copia a IMAGE_DIR (ruta distinta al original) con el mismo tamaño y color, y hay
+          vista previa.
+        - products.image_path guarda la ruta copiada; al limpiar desaparece la vista previa y al
+          reseleccionar se recupera.
+        - Con archivo inexistente la etiqueta dice 'No se pudo mostrar la foto' y el producto se guarda
+          igual.
         """
         source = self.directory / "blusa azul.png"
         Image.new("RGB", (320, 400), "blue").save(source)
@@ -293,18 +345,29 @@ class ProductosUITest(TemporaryInventoryTest):
     @tc("STS_PRO_05", nivel="STS", modulo="productos", reqs=["RNF-01"],
         nombre="Refresco y selección en la tabla de inventario")
     def test_limpiar_no_restaura_seleccion_por_eventos_pendientes(self):
-        """El inventario se actualiza cuando otro componente cambia datos sin perder la edición
-        pendiente.
+        """Probar el refresco de la tabla de inventario, ProductosUI.actualizar_inventario(), que otras
+        pantallas (ventas, devoluciones) llaman cuando cambian el stock: debe mostrar los datos nuevos
+        sin pisar lo que el usuario está editando. También que clear_product_form() quita la selección
+        sin que eventos pendientes de Tk la restauren. RNF-01.
 
-        Precondiciones: Módulo de productos abierto.
+        Precondiciones: Ventana Tk real pero oculta (root.withdraw()); en CI corre bajo Xvfb. Base
+          SQLite temporal sin datos de ejemplo (se parchea mis_trapitos.data.database.seed_examples).
+          messagebox.showinfo/showerror se parchean con unittest.mock para revisar los mensajes sin abrir
+          diálogos. Pantalla ProductosUI(root, db) de mis_trapitos/ui/productos.py. El helper
+          fill_product() llena los 13 campos del formulario (p_code, p_name, ..., p_image) con
+          BLUSA-M-AZUL, stock 10.
         Pasos:
-        - Limpiar formulario
-        - Recargar desde otro componente
-        - Refrescar sin cambios externos
+        - Agregar un producto, seleccionarlo y llamar clear_product_form(); procesar eventos con
+          root.update().
+        - En test_otro_componente_puede_recargar_el_inventario: cambiar el stock a 4 directo en la base
+          y llamar actualizar_inventario(); destruir y recrear la pantalla.
+        - En test_refrescar_sin_cambio_externo_conserva_edicion_pendiente: seleccionar el producto,
+          escribir 'Nombre pendiente' y stock 14 sin guardar, y llamar actualizar_inventario().
         Esperado:
-        - No se restaura la selección
-        - Se ven datos nuevos
-        - La edición pendiente se conserva
+        - Después de limpiar no hay producto seleccionado, el código está vacío y no hay vista previa.
+        - La tabla muestra stock 4 y la pantalla recreada también, sin selección.
+        - La edición pendiente ('Nombre pendiente', 14) se conserva y la tabla sigue mostrando el stock
+          real 10.
         """
         self.add_product()
         select_product(self.ui, "BLUSA-M-AZUL")
@@ -337,16 +400,26 @@ class ProductosAppIntegrationTest(TemporaryInventoryTest):
     @tc("STS_PRO_06", nivel="STS", modulo="productos", reqs=["RF-04", "RNF-01"],
         nombre="Venta, devolución y cancelación actualizan el inventario sin recarga manual")
     def test_venta_devolucion_y_cancelacion_actualizan_inventario_sin_recarga_manual(self):
-        """Flujo extremo a extremo entre módulos de ventas, devoluciones e inventario.
+        """Prueba de extremo a extremo entre pantallas: una venta (VentasUI.add_cart_item() +
+        register_sale_ui()), una devolución (DevolucionesUI.return_item_ui()) y una cancelación
+        (cancel_sale_ui()) deben verse de inmediato en la tabla y el formulario de Productos, sin que el
+        usuario recargue, y sin perder una edición pendiente de otro campo. App conecta las pantallas
+        con App.refresh_products(). RF-04, RNF-01.
 
-        Precondiciones: Aplicación completa con un producto.
+        Precondiciones: App completa (App(db_path=...)) con sesión iniciada y dos productos:
+          BLUSA-M-AZUL (stock 10) y BLUSA-L-ROJA (stock 6).
         Pasos:
-        - Vender
-        - Devolver
-        - Cancelar
-        - Observar la tabla de inventario
+        - Seleccionar BLUSA-M-AZUL en Productos y escribir 'Blusa de algodon' en el nombre sin guardar.
+        - En Ventas, capturar el código y cantidad 3, llamar add_cart_item() y register_sale_ui().
+        - Guardar la edición pendiente con edit_product_ui().
+        - En Devoluciones, devolver 1 pieza con return_item_ui().
+        - Cancelar la venta con cancel_sale_ui().
         Esperado:
-        - La tabla refleja cada cambio sin recargar
+        - Tras la venta: stock 7 en base, tabla y formulario; el carrito queda vacío; el nombre
+          pendiente se conserva y al guardarlo el stock sigue en 7.
+        - Tras la devolución: stock 8 y 1 fila en la tabla de devoluciones.
+        - Tras la cancelación: stock 10, venta CANCELADA y 1 fila en cancelaciones. BLUSA-L-ROJA sigue
+          en 6 todo el tiempo.
         """
         fill_product(self.ui)
         self.ui.add_product_ui()
@@ -399,15 +472,18 @@ class ProductosAppIntegrationTest(TemporaryInventoryTest):
     @tc("STS_PRO_07", nivel="STS", modulo="productos", reqs=["RNF-01"],
         nombre="Reabrir sesión recrea el módulo y conserva inventario")
     def test_reabrir_sesion_recrea_modulo_y_conserva_inventario(self):
-        """Tras cerrar y reabrir sesión el inventario persiste.
+        """Comprobar que cerrar sesión (App.show_login()) y volver a entrar crea una pantalla de Productos
+        nueva y limpia, pero el inventario guardado sigue ahí. RNF-01.
 
-        Precondiciones: Aplicación iniciada.
+        Precondiciones: App completa con sesión iniciada como 'prueba'.
         Pasos:
-        - Cerrar sesión
-        - Volver a entrar
-        - Abrir inventario
+        - Agregar BLUSA-M-AZUL (stock 10) con add_product_ui().
+        - Llamar app.show_login(), escribir las credenciales y llamar login_view.submit().
+        - Revisar la nueva app.productos_ui.
         Esperado:
-        - Los productos siguen presentes
+        - Al cerrar sesión app.user es None.
+        - La pantalla de Productos es un objeto nuevo y sin selección.
+        - BLUSA-M-AZUL sigue con stock 10 en la base y en la tabla.
         """
         fill_product(self.ui)
         self.ui.add_product_ui()

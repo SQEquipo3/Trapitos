@@ -59,16 +59,21 @@ def operaciones(db, empleado, make_product):
 @tc("CTS_FMT_01", nivel="CTS", modulo="ventas", reqs=["ISO-8601"],
     nombre="Fechas y horas de la aplicación en formato ISO 8601")
 def test_fechas_generadas_cumplen_iso_8601():
-    """Las funciones de fecha producen AAAA-MM-DD y AAAA-MM-DD hh:mm:ss (ISO 8601, perfil RFC 3339
-    con espacio como separador).
+    """Prueba de conformidad con ISO 8601: las funciones de fecha de utils.py (today_text(),
+    date_offset(días) y now_text()) deben producir AAAA-MM-DD y AAAA-MM-DD hh:mm:ss, y los formatos
+    DATE_FMT y DATETIME_FMT de config.py deben ser los de ISO. Todas las fechas que se guardan en la
+    base salen de estas funciones.
 
-    Precondiciones: Ninguna.
+    Precondiciones: Ninguna: funciones puras, no usa base de datos.
     Pasos:
-    - Obtener today_text(), date_offset(-30) y now_text()
-    - Interpretarlas con datetime.date/datetime.fromisoformat
+    - Revisar config.DATE_FMT y config.DATETIME_FMT.
+    - Para today_text(), date_offset(−30) y date_offset(400): comprobar el patrón \\d{4}-\\d{2}-\\d{2} e
+      interpretarlas con datetime.date.fromisoformat().
+    - Para now_text(): comprobar el patrón de fecha y hora e interpretarla con
+      datetime.datetime.fromisoformat().
     Esperado:
-    - Coinciden con el patrón ISO 8601 y se interpretan sin error
-    - DATE_FMT y DATETIME_FMT son los formatos ISO configurados
+    - DATE_FMT = '%Y-%m-%d' y DATETIME_FMT = '%Y-%m-%d %H:%M:%S'.
+    - Todas las fechas cumplen el patrón y se interpretan sin error.
     """
     assert DATE_FMT == "%Y-%m-%d" and DATETIME_FMT == "%Y-%m-%d %H:%M:%S"
     for fecha in (today_text(), date_offset(-30), date_offset(400)):
@@ -82,15 +87,20 @@ def test_fechas_generadas_cumplen_iso_8601():
 @tc("CTS_FMT_02", nivel="CTS", modulo="ventas", reqs=["ISO-8601", "RF-19"],
     nombre="Las fechas guardadas se ordenan cronológicamente como texto")
 def test_fechas_guardadas_iso_se_ordenan_como_texto(db, empleado, make_product):
-    """Al guardarse en ISO 8601, ordenar por texto equivale a ordenar por tiempo (lo usan los reportes).
+    """Comprobar una consecuencia práctica de usar ISO 8601: como las fechas se guardan como texto en
+    SQLite, ordenar alfabéticamente debe ser lo mismo que ordenar por tiempo. Los reportes con ventanas
+    de fechas (por ejemplo 'Ventas ultimos tres dias', RF-19) dependen de esto.
 
-    Precondiciones: Producto con stock y un empleado.
+    Precondiciones: Fixtures db, empleado y make_product(stock=10).
     Pasos:
-    - Registrar tres ventas y fijarles fechas de distintos días, meses y años
-    - Leer sale_datetime de la base
+    - Registrar tres ventas con ventas_srv.registrar() y fijarles con UPDATE las fechas 2025-12-31
+      23:59:59, 2026-01-02 08:00:00 y 2026-10-01 12:30:00.
+    - Leer sale_datetime de todas las ventas.
+    - Comparar sorted() alfabético con el orden por datetime.fromisoformat, y ejecutar SELECT ... ORDER
+      BY sale_datetime.
     Esperado:
-    - Cada fecha guardada es ISO 8601 válida
-    - El orden alfabético coincide con el orden cronológico
+    - Ambos ordenamientos coinciden.
+    - ORDER BY sale_datetime regresa las fechas en orden cronológico.
     """
     pid = make_product(stock=10)
     fechas = ["2025-12-31 23:59:59", "2026-01-02 08:00:00", "2026-10-01 12:30:00"]
@@ -106,17 +116,23 @@ def test_fechas_guardadas_iso_se_ordenan_como_texto(db, empleado, make_product):
 @tc("CTS_CSV_01", nivel="CTS", modulo="productos", reqs=["RFC-4180", "RF-15"],
     nombre="Exportación de inventario conforme a RFC 4180")
 def test_csv_de_inventario_cumple_rfc_4180(db, raiz, make_product, tmp_path):
-    """El CSV del inventario sigue RFC 4180: encabezado, CRLF, mismas columnas y comillas
-    para comas, comillas dobles y saltos de línea.
+    """Prueba de conformidad con RFC 4180 (formato CSV): el archivo que genera el botón de exportar
+    inventario, ProductosUI.export_inventory_csv() de mis_trapitos/ui/productos.py, debe tener
+    encabezado, terminar cada registro en CRLF, tener el mismo número de columnas en todas las filas y
+    poner entre comillas los textos con comas, comillas dobles o saltos de línea. RF-15.
 
-    Precondiciones: Productos con coma, comillas y salto de línea en el nombre.
+    Precondiciones: Fixtures db, make_product, tmp_path y raiz (ventana Tk oculta). Tres productos con
+      nombres especiales: 'Blusa, edición especial', 'Vestido "Gala"' y 'Falda' + salto de línea +
+      'larga'.
     Pasos:
-    - Exportar el inventario desde la pantalla de Productos
-    - Leer el archivo en binario y con el lector csv en modo estricto
+    - Crear ProductosUI(raiz, db).
+    - Parchear filedialog.asksaveasfilename para que regrese la ruta del archivo y messagebox.showinfo
+      para que no abra diálogos; llamar ui.export_inventory_csv().
+    - Leer el archivo en binario y con csv.reader(strict=True).
     Esperado:
-    - Cada registro termina en CRLF y la primera línea es el encabezado
-    - Todos los registros tienen el mismo número de campos
-    - Los textos especiales se conservan exactos
+    - El archivo termina en \\r\\n y la primera línea empieza con 'id,codigo,producto'.
+    - Todas las filas tienen el mismo número de campos.
+    - Los tres nombres se leen exactos y las comillas se escapan como ""Gala"".
     """
     make_product(code="P-COMA", name="Blusa, edición especial")
     make_product(code="P-COMILLAS", name='Vestido "Gala"')
@@ -139,15 +155,23 @@ def test_csv_de_inventario_cumple_rfc_4180(db, raiz, make_product, tmp_path):
 @tc("CTS_CSV_02", nivel="CTS", modulo="reportes", reqs=["RFC-4180", "RF-17"],
     nombre="Exportación de reportes en CSV UTF-8 conforme a RFC 4180")
 def test_csv_de_reporte_cumple_rfc_4180_y_utf8(db, raiz, empleado, make_product, tmp_path):
-    """Un reporte exportado es CSV RFC 4180 en UTF-8: acentos y eñes legibles, encabezado y CRLF.
+    """Prueba de conformidad RFC 4180 + UTF-8 para la exportación de reportes:
+    ReportesUI.export_report_csv() de mis_trapitos/ui/reportes.py debe generar un CSV en UTF-8 válido
+    (acentos y eñes legibles en Excel), con encabezado, CRLF y el mismo contenido que se ve en pantalla
+    (ui.last_report_rows). RF-17.
 
-    Precondiciones: Una venta registrada con «Tarjeta de crédito».
+    Precondiciones: Fixtures db, raiz, empleado, make_product y tmp_path. Producto 'Suéter de niño'
+      vendido 2 veces con 'Tarjeta de credito'.
     Pasos:
-    - Ejecutar el reporte «Ventas por metodo de pago» y exportarlo
-    - Decodificar el archivo como UTF-8 estricto
+    - Crear ReportesUI(raiz, db), elegir 'Ventas por metodo de pago' en ui.report_combo y llamar
+      ui.run_report().
+    - Parchear el diálogo de guardado y llamar ui.export_report_csv().
+    - Decodificar el archivo con decode('utf-8', errors='strict') y separar por \\r\\n.
+    - Leerlo con csv.reader(strict=True) y compararlo con ui.last_report_rows.
     Esperado:
-    - El archivo es UTF-8 válido, termina cada registro en CRLF y empieza con encabezado
-    - El reporte exportado coincide con lo que se ve en pantalla
+    - El archivo es UTF-8 válido y cada registro termina en CRLF.
+    - Hay encabezado + una línea por fila del reporte.
+    - El encabezado y la primera columna coinciden con lo mostrado en pantalla.
     """
     pid = make_product(name="Suéter de niño")
     ventas_srv.registrar(db, None, empleado, "Tarjeta de credito", 0, [item(pid, 2)])
@@ -171,13 +195,18 @@ def test_csv_de_reporte_cumple_rfc_4180_y_utf8(db, raiz, empleado, make_product,
 @tc("CTS_SEG_01", nivel="CTS", modulo="contactos", reqs=["FIPS-180-4", "SEG-01"],
     nombre="Hash de contraseñas conforme a SHA-256 (FIPS 180-4)")
 def test_hash_de_contrasena_cumple_vectores_fips_180_4():
-    """hash_password produce el SHA-256 de FIPS 180-4 para los vectores oficiales del NIST.
+    """Prueba de conformidad con FIPS 180-4: hash_password() de utils.py debe producir exactamente el
+    SHA-256 del estándar. Se compara contra los vectores de prueba oficiales publicados por el NIST
+    (diccionario VECTORES_SHA256 del archivo). FIPS-180-4, SEG-01.
 
     Precondiciones: Ninguna.
     Pasos:
-    - Calcular hash_password del mensaje vacío, de «abc» y del mensaje de dos bloques
+    - Llamar hash_password('') (mensaje vacío).
+    - Llamar hash_password('abc').
+    - Llamar hash_password('abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq') (mensaje de dos
+      bloques).
     Esperado:
-    - Los tres resultados coinciden con los vectores publicados
+    - Los tres resultados son iguales a los vectores publicados por el NIST.
     """
     for mensaje, esperado in VECTORES_SHA256.items():
         assert hash_password(mensaje) == esperado
@@ -186,15 +215,16 @@ def test_hash_de_contrasena_cumple_vectores_fips_180_4():
 @tc("CTS_SEG_02", nivel="CTS", modulo="contactos", reqs=["FIPS-180-4", "SEG-01"],
     nombre="Las contraseñas se guardan solo como hash SHA-256")
 def test_contrasenas_se_guardan_solo_como_hash(db):
-    """La tabla de empleados guarda un hash SHA-256 hexadecimal (64 caracteres) y nunca el texto plano.
+    """Verificar que las contraseñas nunca se guardan en texto plano: empleados_repo.guardar() solo escribe
+    en employees.password_hash el SHA-256 hexadecimal de la contraseña. FIPS-180-4, SEG-01.
 
-    Precondiciones: BD temporal vacía.
+    Precondiciones: Fixture db (base temporal vacía).
     Pasos:
-    - Registrar un empleado con contraseña «Secreta#2026»
-    - Leer todas las columnas de su registro
+    - Llamar empleados_repo.guardar(db, None, 'Ana', 'ana', 'Secreta#2026', 'Ventas').
+    - Leer todas las columnas del registro con db.one('SELECT * FROM employees WHERE id=?').
     Esperado:
-    - password_hash tiene 64 caracteres hexadecimales en minúscula
-    - Ninguna columna contiene la contraseña en texto plano
+    - password_hash tiene 64 caracteres hexadecimales en minúscula.
+    - Ninguna columna contiene el texto 'Secreta#2026'.
     """
     eid = empleados_repo.guardar(db, None, "Ana", "ana", "Secreta#2026", "Ventas")
     fila = db.one("SELECT * FROM employees WHERE id=?", (eid,))
@@ -206,15 +236,20 @@ def test_contrasenas_se_guardan_solo_como_hash(db):
 @tc("CTS_BD_01", nivel="CTS", modulo="ventas", reqs=["SQL-FK", "RF-05"],
     nombre="Integridad referencial tras ventas, devoluciones y cancelaciones")
 def test_integridad_referencial_tras_operaciones(db, operaciones):
-    """Después de operar, la base no tiene referencias rotas y las llaves foráneas están activas.
+    """Comprobar la integridad referencial de la base después de un día de operaciones (ventas, devolución,
+    cancelación y ajuste): las llaves foráneas están activas (Database.__init__ ejecuta PRAGMA
+    foreign_keys = ON) y no hay referencias rotas. SQL-FK, RF-05.
 
-    Precondiciones: Ventas, devolución parcial, cancelación y ajuste registrados.
+    Precondiciones: Fixtures db, empleado, make_product y operaciones (tests/test_conformidad.py):
+      productos A (stock 10) y B (stock 8); venta s1 con A×3 + B×1 en Efectivo; venta s2 con B×2 y 10 % de
+      descuento en Débito; devolución de 1 pieza de A en s1; cancelación de s2; y ajuste del stock de A a
+      15 con productos_repo.guardar().
     Pasos:
-    - Consultar PRAGMA foreign_keys
-    - Ejecutar PRAGMA foreign_key_check
+    - Ejecutar db.scalar('PRAGMA foreign_keys').
+    - Ejecutar db.query('PRAGMA foreign_key_check').
     Esperado:
-    - foreign_keys = 1
-    - foreign_key_check no reporta filas
+    - foreign_keys = 1.
+    - foreign_key_check no regresa filas.
     """
     assert db.scalar("PRAGMA foreign_keys") == 1
     assert db.query("PRAGMA foreign_key_check") == []
@@ -223,13 +258,17 @@ def test_integridad_referencial_tras_operaciones(db, operaciones):
 @tc("CTS_BD_02", nivel="CTS", modulo="ventas", reqs=["SQL-FK"],
     nombre="La base pasa la verificación de integridad de SQLite")
 def test_integridad_fisica_de_la_base(db, operaciones):
-    """El archivo de base de datos es íntegro según SQLite tras las operaciones del día.
+    """Comprobar que el archivo de la base queda íntegro según el propio SQLite después de las operaciones
+    del día. SQL-FK.
 
-    Precondiciones: Ventas, devolución parcial, cancelación y ajuste registrados.
+    Precondiciones: Fixtures db, empleado, make_product y operaciones (tests/test_conformidad.py):
+      productos A (stock 10) y B (stock 8); venta s1 con A×3 + B×1 en Efectivo; venta s2 con B×2 y 10 % de
+      descuento en Débito; devolución de 1 pieza de A en s1; cancelación de s2; y ajuste del stock de A a
+      15 con productos_repo.guardar().
     Pasos:
-    - Ejecutar PRAGMA integrity_check
+    - Ejecutar db.scalar('PRAGMA integrity_check').
     Esperado:
-    - El resultado es «ok»
+    - El resultado es 'ok'.
     """
     assert db.scalar("PRAGMA integrity_check") == "ok"
 
@@ -237,16 +276,20 @@ def test_integridad_fisica_de_la_base(db, operaciones):
 @tc("CTS_BD_03", nivel="CTS", modulo="ventas", reqs=["SQL-FK", "RF-06"],
     nombre="La base rechaza registros huérfanos")
 def test_base_rechaza_registros_huerfanos(db, empleado, make_product):
-    """Las llaves foráneas impiden partidas, movimientos o promociones de productos o ventas inexistentes.
+    """Comprobar que la base rechaza registros huérfanos aunque alguien escriba SQL directo, saltándose los
+    repositorios: partidas, movimientos o promociones que apuntan a productos o ventas que no existen.
+    SQL-FK, RF-06.
 
-    Precondiciones: Un producto y una venta registrados.
+    Precondiciones: Fixtures db, empleado y make_product. Un producto y una venta registrados con
+      ventas_srv.registrar().
     Pasos:
-    - Insertar una partida con producto inexistente
-    - Insertar un movimiento ligado a una venta inexistente
-    - Insertar una promoción de un producto inexistente
+    - Ejecutar con db.execute() un INSERT INTO sale_items con product_id = 9999.
+    - Ejecutar un INSERT INTO inventory_movements con related_sale_id = 9999.
+    - Ejecutar un INSERT INTO promotions con product_id = 9999.
+    - Contar otra vez las filas de sale_items.
     Esperado:
-    - Las tres inserciones fallan con IntegrityError
-    - La base queda sin cambios
+    - Las tres inserciones levantan sqlite3.IntegrityError.
+    - sale_items tiene las mismas filas que antes.
     """
     pid = make_product()
     sid, *_ = ventas_srv.registrar(db, None, empleado, "Efectivo", 0, [item(pid, 1)])
@@ -268,16 +311,22 @@ def test_base_rechaza_registros_huerfanos(db, empleado, make_product):
 @tc("CTS_SDD_01", nivel="CTS", modulo="ventas", reqs=["SDD-CONTRATOS", "RF-06", "RF-08"],
     nombre="Registrar, devolver y cancelar cumplen el contrato del SDD")
 def test_operaciones_de_venta_cumplen_contrato_del_sdd(db, empleado, make_product):
-    """Las firmas y resultados de las operaciones coinciden con la tabla de contratos del SDD (sección 3.3).
+    """Prueba de conformidad con la tabla de contratos del SDD (sección 3.3): ventas_srv.registrar()
+    regresa (sale_id entero, subtotal, monto de descuento, total) con total = subtotal − descuento y los
+    mismos importes que guarda en sales; devoluciones_srv.devolver() y cancelar_venta() no regresan
+    valor. SDD-CONTRATOS, RF-06, RF-08.
 
-    Precondiciones: Producto de $200 con stock 10.
+    Precondiciones: Fixtures db, empleado y make_product(price=200, stock=10).
     Pasos:
-    - Registrar una venta de 3 piezas con 10 % de descuento general
-    - Devolver 1 pieza y cancelar la venta
+    - Llamar ventas_srv.registrar(db, None, empleado, 'Efectivo', 10, [3 piezas]).
+    - Revisar que el resultado es una tupla de 4 y que sale_id es int.
+    - Leer la venta con ventas_repo.obtener_por_id(db, sale_id).
+    - Llamar devoluciones_srv.devolver(db, sale_id, pid, 1, 'x') y devoluciones_srv.cancelar_venta(db,
+      sale_id, 'x').
     Esperado:
-    - Registrar regresa (id entero, subtotal, monto de descuento, total) con total = subtotal − descuento
-    - El monto de descuento es subtotal × 10 / 100 y la venta guardada tiene esos importes
-    - Devolver y cancelar no regresan valor
+    - Resultado = (sale_id, 600, 60, 540).
+    - La venta guardada tiene subtotal 600, discount_amount 60, total 540 y status 'ACTIVA'.
+    - devolver() y cancelar_venta() regresan None.
     """
     pid = make_product(price=200, stock=10)
     resultado = ventas_srv.registrar(db, None, empleado, "Efectivo", 10, [item(pid, 3)])
@@ -294,16 +343,24 @@ def test_operaciones_de_venta_cumplen_contrato_del_sdd(db, empleado, make_produc
 @tc("CTS_SDD_02", nivel="CTS", modulo="productos", reqs=["SDD-CONTRATOS", "RF-05"],
     nombre="Los movimientos de inventario usan los tipos y signos del SDD")
 def test_movimientos_usan_tipos_y_signos_del_sdd(db, operaciones):
-    """Cada movimiento es de un tipo definido en el SDD (RF-05) y su signo corresponde al efecto en el stock.
+    """Verificar que el kardex usa solo los tipos de movimiento definidos en el SDD (ENTRADA, SALIDA,
+    AJUSTE, DEVOLUCION, CANCELACION; constante MOVIMIENTOS_SDD) y que el signo de cada cantidad
+    corresponde a su efecto en el stock. SDD-CONTRATOS, RF-05.
 
-    Precondiciones: Ventas, devolución parcial, cancelación y ajuste registrados.
+    Precondiciones: Fixtures db, empleado, make_product y operaciones (tests/test_conformidad.py):
+      productos A (stock 10) y B (stock 8); venta s1 con A×3 + B×1 en Efectivo; venta s2 con B×2 y 10 % de
+      descuento en Débito; devolución de 1 pieza de A en s1; cancelación de s2; y ajuste del stock de A a
+      15 con productos_repo.guardar().
     Pasos:
-    - Leer todos los movimientos de inventario
-    - Sumar las cantidades por producto
+    - Leer todos los movimientos con SELECT product_id, movement_type, quantity FROM
+      inventory_movements.
+    - Revisar el conjunto de tipos y el signo de cada cantidad.
+    - Sumar las cantidades por producto (A y B) y compararlas con su stock.
     Esperado:
-    - Solo hay tipos ENTRADA, SALIDA, AJUSTE, DEVOLUCION y CANCELACION
-    - SALIDA es negativa; ENTRADA, DEVOLUCION y CANCELACION son positivas
-    - La suma de movimientos de cada producto es igual a su stock
+    - Los tipos son exactamente los cinco del SDD.
+    - SALIDA es negativa; ENTRADA, DEVOLUCION y CANCELACION son positivas (AJUSTE puede tener cualquier
+      signo).
+    - La suma de movimientos de cada producto es igual a su stock.
     """
     movimientos = db.query("SELECT product_id, movement_type, quantity FROM inventory_movements")
     assert {m["movement_type"] for m in movimientos} == MOVIMIENTOS_SDD
@@ -320,15 +377,20 @@ def test_movimientos_usan_tipos_y_signos_del_sdd(db, operaciones):
 @tc("CTS_SDD_03", nivel="CTS", modulo="ventas", reqs=["SDD-CONTRATOS", "RF-07"],
     nombre="Los métodos de pago son exactamente los de RF-07")
 def test_metodos_de_pago_son_los_de_rf_07(db, empleado, make_product):
-    """La aplicación ofrece y acepta solo efectivo, tarjeta de crédito, tarjeta de débito y transferencia.
+    """Verificar que los métodos de pago son exactamente los que pide RF-07: efectivo, tarjeta de crédito,
+    tarjeta de débito y transferencia. Se revisa la constante config.PAYMENT_METHODS (que alimenta el
+    combo de la pantalla de Ventas) y que ventas_srv.registrar() rechaza cualquier otro. SDD-CONTRATOS,
+    RF-07.
 
-    Precondiciones: Producto con stock y un empleado.
+    Precondiciones: Fixtures db, empleado y make_product.
     Pasos:
-    - Comparar PAYMENT_METHODS con la lista de RF-07
-    - Registrar una venta con un método fuera de la lista
+    - Comparar PAYMENT_METHODS con ('Efectivo', 'Tarjeta de credito', 'Tarjeta de debito',
+      'Transferencia bancaria').
+    - Llamar ventas_srv.registrar(db, None, empleado, 'Vales de despensa', 0, [item]).
+    - Contar las ventas.
     Esperado:
-    - La lista coincide en contenido y orden
-    - El método fuera de la lista se rechaza y no se guarda la venta
+    - La tupla coincide en contenido y orden.
+    - 'Vales de despensa' levanta ValueError y no se guarda ninguna venta.
     """
     assert PAYMENT_METHODS == ("Efectivo", "Tarjeta de credito", "Tarjeta de debito", "Transferencia bancaria")
     pid = make_product()
