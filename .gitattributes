@@ -1,2 +1,5 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+docs/testing/evidencias/**/*.md text eol=lf
+docs/testing/evidencias/**/*.json text eol=lf
+docs/testing/evidencias/**/*.csv text eol=lf

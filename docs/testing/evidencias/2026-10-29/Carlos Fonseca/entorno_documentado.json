@@ -1,0 +1,16 @@
+{
+  "tipo_registro": "Datos del entorno del material gráfico",
+  "sha_codigo": "b93812dc4002aad9b35122d93d9cef462c244327",
+  "rama": "test/75-aceptacion-manual",
+  "sistema": "Windows-11-10.0.26200-SP0",
+  "arquitectura": "AMD64",
+  "versiones": "3.12.7 (tags/v3.12.7:0b05ead, Oct  1 2024, 03:06:41) [MSC v.1941 64 bit (AMD64)]\nTk: 8.6\nPillow: 13.0.0\n",
+  "dependencias": "pillow==13.0.0\n",
+  "base_de_datos_existia_antes_del_primer_arranque": false,
+  "carga_de_datos_de_ejemplo": true,
+  "codigo_zip_sha256": "3f6ffbdb62ed190611d15eda9821b1ff579c93db6abef5d80c34686226c62546",
+  "wheelhouse": {
+    "pillow-13.0.0-cp312-cp312-win_amd64.whl": "ff3fe9eb621fbb9db4c4be33ab946f6bac5f98ab50ca8d3260503653656c961b"
+  },
+  "sha256_archivo_fuente": "71ef22fcadb40ed4ac137f412351c0900a29f435a409cbb637b06c00de4532cb"
+}

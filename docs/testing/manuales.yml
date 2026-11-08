@@ -10,30 +10,23 @@
   name: Instalación y arranque en equipo limpio sin internet
   reqs:
   - RNF-01
-  objective: >-
-    Comprobar que la tienda puede instalar y usar la aplicación en un equipo sin conexión a internet,
-    como será en el mostrador. Se instalan las dependencias de requirements.txt (Pillow) desde una
-    carpeta local de paquetes (wheelhouse) y se arranca con main.py, que crea App (mis_trapitos/ui/app.py)
-    y la base mis_trapitos.db con create_schema() de mis_trapitos/data/schema.py.
-  pre: >-
-    Equipo con Windows 10/11 o Ubuntu 22.04 y Python 3.12 con Tkinter, sin el proyecto instalado. En otro
-    equipo con internet se preparó la carpeta de paquetes con «pip download -r requirements.txt -d wheelhouse»
-    y se copió junto con el repositorio en una USB. El equipo de prueba se desconecta de la red.
+  objective: La aplicación se instala desde requirements.txt y arranca en un equipo sin conexión.
+  pre: Equipo limpio con Python 3.12 y Tkinter; copia descartable del código sin BD previa y wheelhouse preparado para el mismo sistema y arquitectura. Ver ACEPTACION_MANUAL.md.
   steps:
-  - Copiar el repositorio y la carpeta wheelhouse al equipo de prueba.
-  - Crear un entorno virtual (python -m venv .venv) y activarlo.
-  - Instalar sin internet con pip install --no-index --find-links wheelhouse -r requirements.txt.
-  - Ejecutar python main.py desde la raíz del repositorio.
-  - Iniciar sesión con el usuario de ejemplo admin / 1234 (lo crea seed_examples() de mis_trapitos/data/seed.py).
-  - Abrir la pantalla Productos y la pantalla Ventas.
+  - Registrar versión del código, sistema operativo y Python; desconectar el acceso a internet
+  - Crear un entorno virtual e instalar requirements.txt con --no-index desde el wheelhouse local
+  - Verificar dependencias con pip check y disponibilidad de Tkinter
+  - Ejecutar python main.py con el Python del entorno virtual desde la copia descartable
+  - Iniciar sesión con la cuenta de demostración y abrir Productos
+  - Cerrar y volver a abrir la aplicación, manteniendo el equipo sin internet
   expected:
-  - La instalación termina sin intentar descargar nada y sin errores.
-  - Se abre la ventana de login y se crea el archivo mis_trapitos.db en la carpeta del proyecto.
-  - El login entra a la ventana principal con las 7 pestañas de módulos.
-  - Productos muestra el inventario de ejemplo y Ventas permite capturar un carrito.
-  comments: >-
-    Si falla la instalación, anotar el paquete que pidió internet. Relacionado con la brecha B-08 del
-    SDD (dependencias sin versiones fijas).
+  - Instalación sin descargas de internet ni dependencias faltantes
+  - Inicio de sesión y pantalla Productos operativos en ambos arranques
+  - La BD se crea en la copia de prueba, sin usar datos de operación
+  manual_result: PASSED
+  executed_by: Carlos Fonseca
+  executed_on: '2026-10-29'
+  comments: 'Sesión de Carlos Fonseca, cliente principal, de 20:30 a 20:40, facilitada por Elizabeth Barajas. Instalación en PC limpio, sin base de datos previa, con Wi-Fi desactivado y cable de red desconectado. Inicio de sesión y apertura de Productos correctos en el primer arranque y tras cerrar y volver a abrir la aplicación. Sin incidencias. Versión: b93812d (codigo.zip, SHA-256 3f6ffbdb…6c62546). Evidencia: evidencias/2026-10-29/Carlos Fonseca.md.'
 
 - id: ATS_UX_01
   level: ATS
@@ -42,26 +35,22 @@
   reqs:
   - RF-06
   - RF-01
-  objective: >-
-    Comprobar que una persona no técnica (la dueña de la tienda) puede hacer las dos tareas más comunes
-    sin ayuda: dar de alta un producto en la pantalla Productos (ProductosUI.add_product_ui()) y registrar
-    una venta con promoción en la pantalla Ventas (VentasUI.add_cart_item() y register_sale_ui()).
-  pre: >-
-    Aplicación instalada con los datos de ejemplo y sesión iniciada. Antes de empezar, quien observa crea
-    en Promociones una promoción vigente del 20 % para un producto con existencias. Se tiene cronómetro y
-    una hoja para anotar. Quien observa no explica la pantalla ni contesta cómo hacer las cosas.
+  objective: Una persona no técnica registra un producto y una venta sin ayuda.
+  pre: Copia descartable, cliente identificado y sesión iniciada. Preparar ACEP-PROMO-01 con precio 200, stock 10 y promoción vigente de 25%; código ACEP-NUEVO-01 aún inexistente. Ver ACEPTACION_MANUAL.md.
   steps:
-  - Pedirle que registre una blusa nueva (código, nombre, categoría, talla, color, precios y 5 piezas) y la guarde.
-  - Pedirle que venda dos prendas, una de ellas la que tiene promoción, pagando con tarjeta de débito.
-  - Medir el tiempo de cada tarea desde que se le pide hasta que la aplicación confirma.
-  - Anotar cada duda, cada clic equivocado y cada mensaje de error que vea.
-  - Al final preguntarle qué fue lo más confuso.
+  - Entregar al cliente la tarjeta de tareas e iniciar el cronómetro antes de su primera acción
+  - Pedir que registre ACEP-NUEVO-01 con los datos de la tarjeta
+  - Pedir que venda dos unidades de ACEP-PROMO-01 en efectivo, sin descuento general
+  - Detener el cronómetro al mostrarse el ticket; registrar dudas, errores y cualquier asistencia
+  - Comprobar el producto nuevo, el ticket y el stock final
   expected:
-  - El producto aparece en la tabla de inventario con 5 piezas.
-  - El carrito muestra el porcentaje de la promoción en la línea del producto, la venta se registra con su ticket y el stock baja.
-  - Completa ambas tareas sin asistencia en menos de 5 minutos en total.
-  comments: >-
-    Las dudas y errores anotados se registran como issues (mejora o bug) aunque el TC pase.
+  - Completa ambas tareas sin asistencia en menos de 300 segundos
+  - ACEP-NUEVO-01 queda registrado con stock 5
+  - La venta aplica 25% de promoción y totaliza 300; ACEP-PROMO-01 queda con stock 8
+  manual_result: PASSED
+  executed_by: Carlos Fonseca
+  executed_on: '2026-10-29'
+  comments: 'Carlos Fonseca, cliente principal con conocimiento previo de los requisitos, completó el registro y la venta en 60 segundos según el cronometraje manual. Explicación breve inicial de las funcionalidades, el estado, la tarea y los criterios de medición, sin explicar el funcionamiento de la aplicación ni indicar pantallas, menús o botones; sin ayuda durante el registro y la venta. Funcionamiento sin internet satisfactorio, sin incidencias. Versión: b93812d. Evidencia: evidencias/2026-10-29/Carlos Fonseca.md.'
 
 - id: ATS_SEG_01
   level: ATS
@@ -99,21 +88,16 @@
   reqs:
   - RNF-01
   blocked_by: '#56'
-  objective: >-
-    Escenario VD-08 del SDD: una venta hecha en la terminal A debe verse en la terminal B en 5 segundos o
-    menos, para que dos vendedoras no vendan una prenda que ya no existe. Depende del servicio LAN
-    descrito en docs/SAD.md, que aún no existe: hoy cada instancia abre su propia mis_trapitos.db.
-  pre: >-
-    Dos equipos en la misma red local con la aplicación instalada y conectados al mismo servicio de datos
-    (brecha B-01: aún sin servicio LAN). Un producto con stock 5 visible en ambos.
+  objective: Verificar que una venta en la terminal A se refleja en la terminal B en ≤ 5 s.
+  pre: 'Corrección #56 disponible y verificada; dos terminales en la misma LAN conectadas al mismo servicio y datos de prueba. Producto ACEP-LAN-01 con stock 10 en ambas. Ver ACEPTACION_MANUAL.md.'
   steps:
-  - En A y en B abrir la pantalla Productos y ubicar el producto.
-  - En A registrar una venta de 1 pieza desde la pantalla Ventas.
-  - Con cronómetro, medir el tiempo hasta que B muestra stock 4 sin que nadie toque B.
+  - Identificar la versión y las terminales A y B; comprobar stock 10 en ambas
+  - Mantener abierto el inventario de B y vender una unidad de ACEP-LAN-01 en A
+  - Medir desde la confirmación de venta hasta que B muestra el stock nuevo, sin recarga manual
+  - Registrar duración y stock de ambas terminales
   expected:
-  - B muestra el stock 4 en 5 segundos o menos.
-  comments: >-
-    Bloqueado por la brecha B-01 del SDD (issue #56): hoy no existe sincronización entre instancias.
+  - Ambas terminales muestran stock 9; B se actualiza en un máximo de 5 segundos
+  comments: 'Bloqueado por #56. La verificación requiere dos terminales conectadas al mismo servicio LAN, con registros del cambio de inventario y del tiempo de actualización.'
 
 - id: ATS_VD_09
   level: ATS
@@ -123,19 +107,13 @@
   - RNF-01
   - RF-04
   blocked_by: '#56'
-  objective: >-
-    Escenario VD-09 del SDD: si dos terminales intentan vender al mismo tiempo la última pieza de un
-    producto, solo una venta debe concretarse. En una sola terminal esto lo garantiza la revisión de
-    stock dentro de la transacción de ventas.registrar() (mis_trapitos/services/ventas.py); entre
-    terminales hace falta el servicio LAN.
-  pre: >-
-    Dos terminales A y B conectadas al mismo servicio de datos (brecha B-01) y un producto con stock 1.
+  objective: Solo una de dos ventas simultáneas del último artículo debe concretarse.
+  pre: 'Corrección #56 disponible y verificada; dos terminales conectadas al mismo servicio y datos de prueba. Producto ACEP-ULTIMO-01 con stock 1 y sin ventas previas de ese producto.'
   steps:
-  - En A y en B agregar el producto al carrito en la pantalla Ventas.
-  - Pulsar Registrar venta en ambas terminales casi al mismo tiempo (cuenta regresiva en voz alta).
-  - Revisar el mensaje que aparece en cada terminal y el stock final.
+  - Agregar una unidad de ACEP-ULTIMO-01 al carrito de A y al de B antes de confirmar
+  - Confirmar las dos ventas a una señal acordada y registrar las respuestas
+  - Revisar tickets, ventas registradas, movimiento de salida y stock final
   expected:
-  - Una terminal registra la venta y el stock queda en 0.
-  - La otra muestra «Stock insuficiente» y no guarda nada.
-  comments: >-
-    Requiere dos instancias conectadas (B-01, issue #56).
+  - Una venta se registra y la otra se rechaza por stock insuficiente
+  - Solo se descuenta una unidad; el stock final es 0 en ambas terminales y nunca es negativo
+  comments: 'Bloqueado por #56. Registrar qué terminal concretó la venta y la evidencia de la otra respuesta; ver ACEPTACION_MANUAL.md.'
