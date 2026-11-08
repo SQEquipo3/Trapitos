@@ -1,6 +1,7 @@
 "Promociones"
 
 import tkinter as tk
+from datetime import date
 from tkinter import messagebox, ttk
 
 from utils import date_offset, today_text
@@ -43,13 +44,24 @@ class PromocionesUI(ScrollablePage):
                 raise ValueError("Descuento no valido.")
             if not productos_repo.obtener_por_id(self.db, product_id):
                 raise ValueError("Producto no encontrado.")
+            start_text = self.pr_start.get().strip() or today_text()
+            end_text = self.pr_end.get().strip() or today_text()
+            try:
+                start_date = date.fromisoformat(start_text)
+                end_date = date.fromisoformat(end_text)
+                if start_date.isoformat() != start_text or end_date.isoformat() != end_text:
+                    raise ValueError
+            except ValueError:
+                raise ValueError("Las fechas deben ser válidas y usar el formato AAAA-MM-DD.") from None
+            if end_date < start_date:
+                raise ValueError("La fecha de fin no puede ser anterior a la fecha de inicio.")
             self.selected_promotion_id = promociones_repo.guardar(
                 self.db,
                 self.selected_promotion_id,
                 product_id,
                 discount,
-                self.pr_start.get().strip() or today_text(),
-                self.pr_end.get().strip() or today_text(),
+                start_text,
+                end_text,
             )
             self.refresh_promotions()
             messagebox.showinfo("Promociones", "Promocion guardada.")

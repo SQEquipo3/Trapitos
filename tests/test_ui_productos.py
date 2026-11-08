@@ -5,6 +5,7 @@ Se necesita Tk con una sesion grafica; las ventanas permanecen ocultas.
 """
 
 import csv
+from functools import partial
 from pathlib import Path
 import tempfile
 import tkinter as tk
@@ -70,7 +71,7 @@ class TemporaryInventoryTest(unittest.TestCase):
         directory = tempfile.TemporaryDirectory(prefix="trapitos-tests-")
         self.addCleanup(directory.cleanup)
         self.directory = Path(directory.name)
-        self.start_patch(patch("mis_trapitos.data.database.seed_examples"))
+        self.start_patch(patch.object(application, "Database", side_effect=partial(Database, load_examples=False)))
         self.info = self.start_patch(patch.object(messagebox, "showinfo"))
         self.error = self.start_patch(patch.object(messagebox, "showerror"))
         self.warning = self.start_patch(patch.object(messagebox, "showwarning"))
@@ -84,7 +85,7 @@ class TemporaryInventoryTest(unittest.TestCase):
 class ProductosUITest(TemporaryInventoryTest):
     def setUp(self):
         super().setUp()
-        self.db = Database(str(self.directory / "inventario.db"))
+        self.db = Database(str(self.directory / "inventario.db"), load_examples=False)
         self.addCleanup(self.db.close)
         self.root = tk.Tk()
         self.root.withdraw()
@@ -106,7 +107,7 @@ class ProductosUITest(TemporaryInventoryTest):
         (talla/color) conserva su propio stock y no se puede repetir un código. RF-01, RF-02.
 
         Precondiciones: Ventana Tk real pero oculta (root.withdraw()); en CI corre bajo Xvfb. Base
-          SQLite temporal sin datos de ejemplo (se parchea mis_trapitos.data.database.seed_examples).
+          SQLite temporal sin datos de ejemplo (Database(..., load_examples=False)).
           messagebox.showinfo/showerror se parchean con unittest.mock para revisar los mensajes sin abrir
           diálogos. Pantalla ProductosUI(root, db) de mis_trapitos/ui/productos.py. El helper
           fill_product() llena los 13 campos del formulario (p_code, p_name, ..., p_image) con
@@ -163,45 +164,51 @@ class ProductosUITest(TemporaryInventoryTest):
         edit_product_ui() muestra el error y no llama productos_repo.guardar(). RF-01, RF-03.
 
         Precondiciones: Ventana Tk real pero oculta (root.withdraw()); en CI corre bajo Xvfb. Base
-          SQLite temporal sin datos de ejemplo (se parchea mis_trapitos.data.database.seed_examples).
+          SQLite temporal sin datos de ejemplo (Database(..., load_examples=False)).
           messagebox.showinfo/showerror se parchean con unittest.mock para revisar los mensajes sin abrir
           diálogos. Pantalla ProductosUI(root, db) de mis_trapitos/ui/productos.py. El helper
           fill_product() llena los 13 campos del formulario (p_code, p_name, ..., p_image) con
           BLUSA-M-AZUL, stock 10. Un producto ya guardado y seleccionado.
         Pasos:
-        - Para cada caso, llenar el formulario con fill_product() y llamar edit_product_ui(): código,
-          nombre, categoría, talla o color en blanco; precio de compra −1; precio de venta −1; stock −1;
-          precio 'abc'; stock '1.5'; proveedor 9999.
-        - Después de cada intento comparar el producto en la base y el número de movimientos.
+        - Para cada caso, llenar el formulario con fill_product() (código NUEVA-VARIANTE) y llamar
+          add_product_ui() y edit_product_ui(): código, nombre, categoría, talla o color en blanco;
+          precio de compra −1; precio de venta −1; stock −1; precio de compra o de venta 'abc'; stock
+          '1.5'; proveedor 9999 o 'abc'.
+        - Después de cada intento comparar las tablas products e inventory_movements completas.
         - En test_edicion_sin_seleccion_no_guarda_producto: sin seleccionar nada, llenar el formulario y
           llamar edit_product_ui().
         Esperado:
-        - Cada intento muestra exactamente un showerror.
-        - El producto y la tabla inventory_movements quedan sin cambios.
+        - Cada intento muestra exactamente un showerror y ningún showinfo de confirmación.
+        - Las tablas products e inventory_movements quedan sin cambios y la selección no cambia.
         - La edición sin selección muestra error y no crea ningún producto.
         """
         product_id = self.add_product()
-        original = dict(self.db.one("SELECT * FROM products WHERE id=?", (product_id,)))
-        movements = self.db.scalar("SELECT COUNT(*) FROM inventory_movements")
+        tables = ("products", "inventory_movements")
+        original = {table: [tuple(row) for row in self.db.query(f"SELECT * FROM {table} ORDER BY id")]
+                    for table in tables}
         invalid_values = [
             {field: " "} for field in
             ("p_code", "p_name", "p_category", "p_size", "p_color")
         ] + [
             {"p_purchase": "-1"}, {"p_sale": "-1"}, {"p_stock": "-1"},
-            {"p_purchase": "abc"}, {"p_stock": "1.5"}, {"p_supplier": "9999"},
+            {"p_purchase": "abc"}, {"p_sale": "abc"}, {"p_stock": "1.5"},
+            {"p_supplier": "9999"}, {"p_supplier": "abc"},
         ]
-        for values in invalid_values:
-            with self.subTest(values=values):
-                self.error.reset_mock()
-                fill_product(self.ui, **values)
-                self.ui.edit_product_ui()
-                self.error.assert_called_once()
-                self.assertEqual(
-                    dict(self.db.one("SELECT * FROM products WHERE id=?", (product_id,))),
-                    original,
-                )
-                self.assertEqual(self.db.scalar("SELECT COUNT(*) FROM inventory_movements"),
-                                 movements)
+        for save in (self.ui.add_product_ui, self.ui.edit_product_ui):
+            for values in invalid_values:
+                with self.subTest(operation=save.__name__, values=values):
+                    self.error.reset_mock()
+                    self.info.reset_mock()
+                    fill_product(self.ui, **{"p_code": "NUEVA-VARIANTE", **values})
+                    save()
+                    self.error.assert_called_once()
+                    self.info.assert_not_called()
+                    self.assertEqual(self.ui.selected_product_id, product_id)
+                    for table in tables:
+                        self.assertEqual(
+                            [tuple(row) for row in self.db.query(f"SELECT * FROM {table} ORDER BY id")],
+                            original[table],
+                        )
 
     @tc("STS_PRO_01")
     def test_codigo_duplicado_no_crea_otra_variante(self):
@@ -229,7 +236,7 @@ class ProductosUITest(TemporaryInventoryTest):
         'Inventario general actualizado')) sin perder texto con comas o acentos. RF-03.
 
         Precondiciones: Ventana Tk real pero oculta (root.withdraw()); en CI corre bajo Xvfb. Base
-          SQLite temporal sin datos de ejemplo (se parchea mis_trapitos.data.database.seed_examples).
+          SQLite temporal sin datos de ejemplo (Database(..., load_examples=False)).
           messagebox.showinfo/showerror se parchean con unittest.mock para revisar los mensajes sin abrir
           diálogos. Pantalla ProductosUI(root, db) de mis_trapitos/ui/productos.py. El helper
           fill_product() llena los 13 campos del formulario (p_code, p_name, ..., p_image) con
@@ -265,7 +272,7 @@ class ProductosUITest(TemporaryInventoryTest):
         existe, se muestra un aviso sin romper el formulario. RF-01.
 
         Precondiciones: Ventana Tk real pero oculta (root.withdraw()); en CI corre bajo Xvfb. Base
-          SQLite temporal sin datos de ejemplo (se parchea mis_trapitos.data.database.seed_examples).
+          SQLite temporal sin datos de ejemplo (Database(..., load_examples=False)).
           messagebox.showinfo/showerror se parchean con unittest.mock para revisar los mensajes sin abrir
           diálogos. Pantalla ProductosUI(root, db) de mis_trapitos/ui/productos.py. El helper
           fill_product() llena los 13 campos del formulario (p_code, p_name, ..., p_image) con
@@ -351,7 +358,7 @@ class ProductosUITest(TemporaryInventoryTest):
         sin que eventos pendientes de Tk la restauren. RNF-01.
 
         Precondiciones: Ventana Tk real pero oculta (root.withdraw()); en CI corre bajo Xvfb. Base
-          SQLite temporal sin datos de ejemplo (se parchea mis_trapitos.data.database.seed_examples).
+          SQLite temporal sin datos de ejemplo (Database(..., load_examples=False)).
           messagebox.showinfo/showerror se parchean con unittest.mock para revisar los mensajes sin abrir
           diálogos. Pantalla ProductosUI(root, db) de mis_trapitos/ui/productos.py. El helper
           fill_product() llena los 13 campos del formulario (p_code, p_name, ..., p_image) con

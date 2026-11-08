@@ -1,3 +1,4 @@
+from functools import partial
 from pathlib import Path
 import tempfile
 import tkinter as tk
@@ -11,7 +12,7 @@ from utils import date_offset, today_text
 from mis_trapitos.ui.app import App
 from mis_trapitos.ui.devoluciones import DevolucionesUI
 from mis_trapitos.ui.promociones import PromocionesUI
-from mis_trapitos.services.ventas import ServicioVentas
+from mis_trapitos.ui.ventas import VentasUI
 from mis_trapitos.services import ventas as ventas_srv
 from mis_trapitos.data.repositories import empleados as empleados_repo
 from mis_trapitos.data.repositories import productos as productos_repo
@@ -58,7 +59,7 @@ class TemporaryWorkflowTest(unittest.TestCase):
         directory = tempfile.TemporaryDirectory(prefix="trapitos-workflows-")
         self.addCleanup(directory.cleanup)
         self.path = str(Path(directory.name) / "test.db")
-        self.start_patch(patch("mis_trapitos.data.database.seed_examples"))
+        self.start_patch(patch("mis_trapitos.ui.app.Database", side_effect=partial(Database, load_examples=False)))
         self.info = self.start_patch(patch.object(messagebox, "showinfo"))
         self.error = self.start_patch(patch.object(messagebox, "showerror"))
 
@@ -71,7 +72,7 @@ class TemporaryWorkflowTest(unittest.TestCase):
 class ModuleWidgetTest(TemporaryWorkflowTest):
     def setUp(self):
         super().setUp()
-        self.db = Database(self.path)
+        self.db = Database(self.path, load_examples=False)
         self.addCleanup(self.db.close)
         self.root = tk.Tk()
         self.root.withdraw()
@@ -95,7 +96,7 @@ class PromocionesUITest(ModuleWidgetTest):
         registrar_venta() de mis_trapitos/services/ventas.py. RF-09, RF-10.
 
         Precondiciones: Ventana Tk real pero oculta (root.withdraw()); en CI corre bajo Xvfb. Base
-          SQLite temporal sin datos de ejemplo (se parchea mis_trapitos.data.database.seed_examples).
+          SQLite temporal sin datos de ejemplo (Database(..., load_examples=False)).
           messagebox.showinfo/showerror se parchean con unittest.mock para revisar los mensajes sin abrir
           diálogos. Producto BLUSA-M ($200, stock 10) y un empleado.
         Pasos:
@@ -104,17 +105,21 @@ class PromocionesUITest(ModuleWidgetTest):
         - Limpiar con clear_promotion_form(), seleccionar la promoción en promotions_tree (helper
           select_promotion), cambiar el descuento a 25 y volver a guardar.
         - Llamar clear_promotion_form() y revisar los campos.
-        - Crear ServicioVentas(db), agregar_producto('BLUSA-M', 2) y registrar_venta(None, empleado,
-          'Efectivo', 10).
+        - Abrir VentasUI (mis_trapitos/ui/ventas.py), capturar BLUSA-M, cantidad 2 y descuento 10,
+          llamar add_cart_item() y después register_sale_ui().
         - En PromocionesSessionTest: con App completa, crear una promoción de 15 %, cerrar sesión con
           app.show_login() y volver a entrar.
+        - En test_promocion_admite_un_dia_fecha_bisiesta_y_fechas_predeterminadas: guardar promociones
+          con inicio = fin = hoy, inicio = fin = 2024-02-29 y con ambas fechas vacías.
         Esperado:
         - Se crea 1 promoción; al editar se actualiza la misma (sigue habiendo 1, ahora con 25 %).
         - Al limpiar, selected_promotion_id es None y las fechas vuelven a hoy y hoy+30.
-        - Venta: subtotal 300 (2 × 200 × 0.75), descuento 30, total 270;
+        - El carrito muestra la promoción de 25 %; venta: subtotal 300 (2 × 200 × 0.75), descuento 30,
+          total 270; el ticket dice «VENTA REGISTRADA» y «Total: $270.00»; el carrito queda vacío;
           sale_items.promo_discount_percent = 25; stock 8.
         - Al reabrir sesión la pantalla es nueva, sin selección, y la promoción de 15 % sigue en la
           tabla y vigente.
+        - Las vigencias de un día y la fecha bisiesta se guardan; con campos vacíos se usa la fecha de hoy.
         """
         fill_promotion(self.ui, self.product_id)
         self.ui.save_promotion_ui()
@@ -138,13 +143,23 @@ class PromocionesUITest(ModuleWidgetTest):
         self.assertEqual(self.ui.pr_discount.get(), "")
         self.assertEqual(self.ui.pr_start.get(), today_text())
         self.assertEqual(self.ui.pr_end.get(), date_offset(30))
-        sale = ServicioVentas(self.db)
-        sale.agregar_producto("BLUSA-M", 2)
-        result = sale.registrar_venta(None, self.employee_id, PAYMENT_METHODS[0], 10)
-        self.assertAlmostEqual(result.subtotal, 300)
-        self.assertAlmostEqual(result.descuento, 30)
-        self.assertAlmostEqual(result.total, 270)
-        line = self.db.one("SELECT * FROM sale_items WHERE sale_id=?", (result.sale_id,))
+        sale = VentasUI(self.root, self.db, empleados_repo.obtener_por_id(self.db, self.employee_id))
+        set_entry(sale.sale_product_code, "BLUSA-M")
+        set_entry(sale.sale_quantity, 2)
+        set_entry(sale.sale_discount, 10)
+        sale.add_cart_item()
+        cart_row = sale.cart_tree.get_children()[0]
+        self.assertEqual(sale.cart_tree.set(cart_row, "promo"), "25%")
+        sale.register_sale_ui()
+        result = self.db.one("SELECT * FROM sales ORDER BY id DESC LIMIT 1")
+        self.assertAlmostEqual(result["subtotal"], 300)
+        self.assertAlmostEqual(result["discount_amount"], 30)
+        self.assertAlmostEqual(result["total"], 270)
+        self.assertIn("VENTA REGISTRADA", sale.ticket_text.get("1.0", "end"))
+        self.assertIn("Total: $270.00", sale.ticket_text.get("1.0", "end"))
+        self.assertEqual(sale.cart_tree.get_children(), ())
+        self.assertEqual(sale.servicio.cart, [])
+        line = self.db.one("SELECT * FROM sale_items WHERE sale_id=?", (result["id"],))
         self.assertEqual(line["promo_discount_percent"], 25)
         self.assertAlmostEqual(line["line_total"], 300)
         self.assertEqual(self.db.scalar("SELECT stock FROM products WHERE id=?", (self.product_id,)), 8)
@@ -157,7 +172,7 @@ class PromocionesUITest(ModuleWidgetTest):
         tocar la base, tanto al crear como al editar una promoción existente. RF-09.
 
         Precondiciones: Ventana Tk real pero oculta (root.withdraw()); en CI corre bajo Xvfb. Base
-          SQLite temporal sin datos de ejemplo (se parchea mis_trapitos.data.database.seed_examples).
+          SQLite temporal sin datos de ejemplo (Database(..., load_examples=False)).
           messagebox.showinfo/showerror se parchean con unittest.mock para revisar los mensajes sin abrir
           diálogos. Producto registrado. El helper database_state() toma una foto de las tablas products,
           promotions, sales, sale_items, returns, cancellations e inventory_movements.
@@ -165,10 +180,14 @@ class PromocionesUITest(ModuleWidgetTest):
         - Para alta y para edición, tomar database_state() antes de empezar.
         - Probar con fill_promotion() + save_promotion_ui() cada combinación: producto '', 'abc' o 99999
           (inexistente); descuento −1, 101 o 'abc'.
+        - En test_fechas_invalidas_no_crean_ni_modifican_promociones: repetir con fechas inexistentes
+          (2026-02-30, 2026-11-31, 2025-02-29), texto, formato distinto de AAAA-MM-DD (01/10/2026,
+          20261001) y fin anterior al inicio.
         - Después de cada intento comparar database_state() con la foto original.
         Esperado:
-        - Cada intento muestra exactamente un messagebox.showerror.
+        - Cada intento muestra exactamente un messagebox.showerror y ningún showinfo.
         - La base queda idéntica: no se crea ni se modifica ninguna promoción.
+        - Con fechas inválidas tampoco cambian selected_promotion_id ni las filas de promotions_tree.
         """
         invalid_values = (("", 20), ("abc", 20), (99999, 20), (self.product_id, -1), (self.product_id, 101), (self.product_id, "abc"))
         for editing in (False, True):
@@ -183,6 +202,50 @@ class PromocionesUITest(ModuleWidgetTest):
                     self.ui.save_promotion_ui()
                     self.error.assert_called_once()
                     self.assertEqual(database_state(self.db), original)
+
+    @tc("STS_PRM_02")
+    def test_fechas_invalidas_no_crean_ni_modifican_promociones(self):
+        invalid_dates = (
+            ("fecha", "2026-10-31"), ("2026-10-01", "fecha"),
+            ("2026-02-30", "2026-10-31"), ("2026-10-01", "2026-11-31"),
+            ("2025-02-29", "2026-10-31"), ("01/10/2026", "2026-10-31"),
+            ("20261001", "2026-10-31"), ("2026-10-01", "20261031"),
+            ("2026-10-31", "2026-10-01"),
+        )
+        for editing in (False, True):
+            if editing:
+                fill_promotion(self.ui, self.product_id)
+                self.ui.save_promotion_ui()
+            original = database_state(self.db)
+            selected = self.ui.selected_promotion_id
+            rows = self.ui.promotions_tree.get_children()
+            for start, end in invalid_dates:
+                with self.subTest(editing=editing, start=start, end=end):
+                    self.error.reset_mock()
+                    self.info.reset_mock()
+                    fill_promotion(self.ui, self.product_id)
+                    set_entry(self.ui.pr_start, start)
+                    set_entry(self.ui.pr_end, end)
+                    self.ui.save_promotion_ui()
+                    self.error.assert_called_once()
+                    self.info.assert_not_called()
+                    self.assertEqual(database_state(self.db), original)
+                    self.assertEqual(self.ui.selected_promotion_id, selected)
+                    self.assertEqual(self.ui.promotions_tree.get_children(), rows)
+
+    @tc("STS_PRM_01")
+    def test_promocion_admite_un_dia_fecha_bisiesta_y_fechas_predeterminadas(self):
+        for day in (today_text(), "2024-02-29", ""):
+            with self.subTest(day=day):
+                self.ui.clear_promotion_form()
+                fill_promotion(self.ui, self.product_id)
+                set_entry(self.ui.pr_start, day)
+                set_entry(self.ui.pr_end, day)
+                self.ui.save_promotion_ui()
+                self.error.assert_not_called()
+                row = promociones_repo.obtener_por_id(self.db, self.ui.selected_promotion_id)
+                expected = day or today_text()
+                self.assertEqual((row["start_date"], row["end_date"]), (expected, expected))
 
 
 class DevolucionesUITest(ModuleWidgetTest):
@@ -215,7 +278,7 @@ class DevolucionesUITest(ModuleWidgetTest):
         llama on_inventario_actualizado para que la pestaña de Productos se refresque. RF-05.
 
         Precondiciones: Ventana Tk real pero oculta (root.withdraw()); en CI corre bajo Xvfb. Base
-          SQLite temporal sin datos de ejemplo (se parchea mis_trapitos.data.database.seed_examples).
+          SQLite temporal sin datos de ejemplo (Database(..., load_examples=False)).
           messagebox.showinfo/showerror se parchean con unittest.mock para revisar los mensajes sin abrir
           diálogos. Producto con stock 10, venta de 5 piezas (stock 5) y on_inventario_actualizado como
           Mock que anota el stock en cada llamada.
@@ -273,7 +336,7 @@ class DevolucionesUITest(ModuleWidgetTest):
         y cancel_sale_ui() de DevolucionesUI. RF-05.
 
         Precondiciones: Ventana Tk real pero oculta (root.withdraw()); en CI corre bajo Xvfb. Base
-          SQLite temporal sin datos de ejemplo (se parchea mis_trapitos.data.database.seed_examples).
+          SQLite temporal sin datos de ejemplo (Database(..., load_examples=False)).
           messagebox.showinfo/showerror se parchean con unittest.mock para revisar los mensajes sin abrir
           diálogos. Venta de 5 piezas y otro producto OTRA-L que no se vendió. Se compara con
           database_state().

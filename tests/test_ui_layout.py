@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+from functools import partial
 from itertools import combinations
 from pathlib import Path
 import os
@@ -11,6 +12,7 @@ import unittest
 from unittest.mock import patch
 
 from mis_trapitos.data.repositories import empleados as empleados_repo
+from mis_trapitos.data.database import Database
 from mis_trapitos.data.repositories import productos as productos_repo
 from mis_trapitos.ui.app import App
 from utils import today_text
@@ -83,7 +85,7 @@ class LayoutTest(unittest.TestCase):
             original_styles(app)
 
         with tempfile.TemporaryDirectory(prefix="trapitos-layout-") as directory:
-            with patch("mis_trapitos.data.database.seed_examples"), \
+            with patch("mis_trapitos.ui.app.Database", side_effect=partial(Database, load_examples=False)), \
                     patch.object(App, "_configure_styles", configure), \
                     patch.object(messagebox, "showerror") as error:
                 app = App(db_path=str(Path(directory) / "layout.db"))
