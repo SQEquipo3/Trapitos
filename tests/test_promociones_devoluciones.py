@@ -89,19 +89,37 @@ class PromocionesUITest(ModuleWidgetTest):
     @tc("STS_PRM_01", nivel="STS", modulo="ventas", reqs=["RF-09", "RF-10"],
         nombre="Promociones: alta, edición y descuento aplicado en venta")
     def test_alta_edicion_limpieza_y_descuento_aplicado_en_venta(self):
-        """La pantalla de promociones crea y edita ofertas y la venta usa el descuento.
+        """Probar la pantalla de Promociones, PromocionesUI de mis_trapitos/ui/promociones.py, y que la
+        promoción capturada ahí se aplique en una venta real. Métodos de la pantalla:
+        save_promotion_ui() (alta o edición según selected_promotion_id), load_promotion_selected() y
+        clear_promotion_form(). La venta se hace con ServicioVentas.agregar_producto() y
+        registrar_venta() de mis_trapitos/services/ventas.py. RF-09, RF-10.
 
-        Precondiciones: Producto registrado.
+        Precondiciones: Ventana Tk real pero oculta (root.withdraw()); en CI corre bajo Xvfb. Base
+          SQLite temporal sin datos de ejemplo (Database(..., load_examples=False)).
+          messagebox.showinfo/showerror se parchean con unittest.mock para revisar los mensajes sin abrir
+          diálogos. Producto BLUSA-M ($200, stock 10) y un empleado.
         Pasos:
-        - Crear promoción
-        - Editarla y limpiar
-        - Agregar el producto al carrito y registrar la venta desde la interfaz
-        - Reabrir sesión
-        - Registrar una vigencia de un día, una fecha bisiesta y fechas predeterminadas
+        - Llenar pr_product, pr_discount = 20 y fechas (ayer a +30 días) con el helper fill_promotion()
+          y llamar save_promotion_ui().
+        - Limpiar con clear_promotion_form(), seleccionar la promoción en promotions_tree (helper
+          select_promotion), cambiar el descuento a 25 y volver a guardar.
+        - Llamar clear_promotion_form() y revisar los campos.
+        - Abrir VentasUI (mis_trapitos/ui/ventas.py), capturar BLUSA-M, cantidad 2 y descuento 10,
+          llamar add_cart_item() y después register_sale_ui().
+        - En PromocionesSessionTest: con App completa, crear una promoción de 15 %, cerrar sesión con
+          app.show_login() y volver a entrar.
+        - En test_promocion_admite_un_dia_fecha_bisiesta_y_fechas_predeterminadas: guardar promociones
+          con inicio = fin = hoy, inicio = fin = 2024-02-29 y con ambas fechas vacías.
         Esperado:
-        - El descuento aparece en el carrito, el ticket y la venta persistida
-        - La sesión reabierta conserva promociones y reinicia selección
-        - Las fechas válidas se guardan y los campos vacíos toman la fecha actual
+        - Se crea 1 promoción; al editar se actualiza la misma (sigue habiendo 1, ahora con 25 %).
+        - Al limpiar, selected_promotion_id es None y las fechas vuelven a hoy y hoy+30.
+        - El carrito muestra la promoción de 25 %; venta: subtotal 300 (2 × 200 × 0.75), descuento 30,
+          total 270; el ticket dice «VENTA REGISTRADA» y «Total: $270.00»; el carrito queda vacío;
+          sale_items.promo_discount_percent = 25; stock 8.
+        - Al reabrir sesión la pantalla es nueva, sin selección, y la promoción de 15 % sigue en la
+          tabla y vigente.
+        - Las vigencias de un día y la fecha bisiesta se guardan; con campos vacíos se usa la fecha de hoy.
         """
         fill_promotion(self.ui, self.product_id)
         self.ui.save_promotion_ui()
@@ -150,15 +168,26 @@ class PromocionesUITest(ModuleWidgetTest):
     @tc("STS_PRM_02", nivel="STS", modulo="ventas", reqs=["RF-09"],
         nombre="Promociones con datos inválidos no se guardan")
     def test_datos_invalidos_no_crean_ni_modifican_promociones(self):
-        """Porcentaje o fechas inválidas no crean ni modifican promociones.
+        """Comprobar que PromocionesUI.save_promotion_ui() rechaza datos inválidos mostrando un error y sin
+        tocar la base, tanto al crear como al editar una promoción existente. RF-09.
 
-        Precondiciones: Pantalla de promociones abierta.
+        Precondiciones: Ventana Tk real pero oculta (root.withdraw()); en CI corre bajo Xvfb. Base
+          SQLite temporal sin datos de ejemplo (Database(..., load_examples=False)).
+          messagebox.showinfo/showerror se parchean con unittest.mock para revisar los mensajes sin abrir
+          diálogos. Producto registrado. El helper database_state() toma una foto de las tablas products,
+          promotions, sales, sale_items, returns, cancellations e inventory_movements.
         Pasos:
-        - Intentar altas y ediciones con producto o porcentaje inválido
-        - Repetir con fechas inexistentes, formato distinto de AAAA-MM-DD o fin anterior al inicio
+        - Para alta y para edición, tomar database_state() antes de empezar.
+        - Probar con fill_promotion() + save_promotion_ui() cada combinación: producto '', 'abc' o 99999
+          (inexistente); descuento −1, 101 o 'abc'.
+        - En test_fechas_invalidas_no_crean_ni_modifican_promociones: repetir con fechas inexistentes
+          (2026-02-30, 2026-11-31, 2025-02-29), texto, formato distinto de AAAA-MM-DD (01/10/2026,
+          20261001) y fin anterior al inicio.
+        - Después de cada intento comparar database_state() con la foto original.
         Esperado:
-        - Mensaje de validación
-        - Sin cambios en datos, selección ni listado de promociones ante fechas inválidas
+        - Cada intento muestra exactamente un messagebox.showerror y ningún showinfo.
+        - La base queda idéntica: no se crea ni se modifica ninguna promoción.
+        - Con fechas inválidas tampoco cambian selected_promotion_id ni las filas de promotions_tree.
         """
         invalid_values = (("", 20), ("abc", 20), (99999, 20), (self.product_id, -1), (self.product_id, 101), (self.product_id, "abc"))
         for editing in (False, True):
@@ -243,14 +272,29 @@ class DevolucionesUITest(ModuleWidgetTest):
     @tc("STS_DEV_01", nivel="STS", modulo="ventas", reqs=["RF-05"],
         nombre="Devoluciones parciales y cancelación reponen solo lo pendiente")
     def test_devoluciones_parciales_y_cancelacion_reponen_solo_lo_pendiente(self):
-        """Flujo de devoluciones por interfaz.
+        """Probar el flujo completo de la pantalla Devoluciones y cancelaciones, DevolucionesUI de
+        mis_trapitos/ui/devoluciones.py: return_item_ui() llama devoluciones_srv.devolver() y
+        cancel_sale_ui() llama devoluciones_srv.cancelar_venta(); después de cada operación exitosa se
+        llama on_inventario_actualizado para que la pestaña de Productos se refresque. RF-05.
 
-        Precondiciones: Venta registrada.
+        Precondiciones: Ventana Tk real pero oculta (root.withdraw()); en CI corre bajo Xvfb. Base
+          SQLite temporal sin datos de ejemplo (Database(..., load_examples=False)).
+          messagebox.showinfo/showerror se parchean con unittest.mock para revisar los mensajes sin abrir
+          diálogos. Producto con stock 10, venta de 5 piezas (stock 5) y on_inventario_actualizado como
+          Mock que anota el stock en cada llamada.
         Pasos:
-        - Devolver parcialmente dos veces
-        - Cancelar la venta
+        - Capturar en r_sale, r_product, r_quantity, r_reason una devolución de 2 y llamar
+          return_item_ui().
+        - Devolver 1 más con return_item_ui().
+        - Capturar la venta en cancel_sale_entry y llamar cancel_sale_ui().
+        - Volver a llamar cancel_sale_ui() y return_item_ui() sobre la venta ya cancelada.
         Esperado:
-        - Stock final correcto sin doble reposición
+        - El stock pasa 5 → 7 → 8 → 10; returns_tree tiene 2 filas y cancellations_tree 1.
+        - Movimientos de la venta: DEVOLUCION suma 3 y CANCELACION suma 2 (no hay doble reposición); la
+          venta queda CANCELADA.
+        - on_inventario_actualizado se llamó 3 veces viendo stock 7, 8 y 10.
+        - Los intentos sobre la venta cancelada muestran un error cada uno, no notifican y no cambian la
+          base.
         """
         self.assertEqual(self.stock(), 5)
         self.updated.assert_not_called()
@@ -287,15 +331,24 @@ class DevolucionesUITest(ModuleWidgetTest):
     @tc("STS_DEV_02", nivel="STS", modulo="ventas", reqs=["RF-05"],
         nombre="Devoluciones y cancelaciones inválidas no alteran datos")
     def test_devoluciones_invalidas_no_alteran_datos_ni_notifican_inventario(self):
-        """Operaciones inválidas no cambian datos ni disparan notificaciones al inventario.
+        """Comprobar que la pantalla de Devoluciones rechaza capturas inválidas con un mensaje, sin cambiar
+        datos y sin avisar al inventario (on_inventario_actualizado no se llama). Cubre return_item_ui()
+        y cancel_sale_ui() de DevolucionesUI. RF-05.
 
-        Precondiciones: Ventas registradas.
+        Precondiciones: Ventana Tk real pero oculta (root.withdraw()); en CI corre bajo Xvfb. Base
+          SQLite temporal sin datos de ejemplo (Database(..., load_examples=False)).
+          messagebox.showinfo/showerror se parchean con unittest.mock para revisar los mensajes sin abrir
+          diálogos. Venta de 5 piezas y otro producto OTRA-L que no se vendió. Se compara con
+          database_state().
         Pasos:
-        - Devolver cantidad inválida
-        - Cancelar venta ya cancelada o inexistente
+        - Con fill_return() + return_item_ui() probar: venta 'abc' o 99999; producto 'abc', OTRA-L (no
+          vendido) o 99999; cantidad 'abc', 0, −1 o 6 (más de lo vendido).
+        - En test_cancelaciones_invalidas_no_alteran_datos_ni_notifican_inventario: escribir '', 'abc' o
+          99999 en cancel_sale_entry y llamar cancel_sale_ui().
         Esperado:
-        - Mensaje de error
-        - Datos intactos y sin notificación
+        - Cada intento muestra exactamente un showerror.
+        - on_inventario_actualizado no se llama.
+        - La base queda idéntica y las tablas de devoluciones y cancelaciones siguen vacías.
         """
         unsold_id = add_product(self.db, "OTRA-L")
         original = database_state(self.db)

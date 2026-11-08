@@ -64,3 +64,34 @@ jobs:
           name: entregables-qa
           path: entregables/
           if-no-files-found: warn
+
+  # Deja los Excel de la última corrida en main en el release «qa-latest», con enlaces fijos:
+  # https://github.com/<repo>/releases/download/qa-latest/<archivo>. Corre aunque fallen pruebas.
+  publicar-entregables:
+    needs: pytest
+    if: always() && needs.pytest.result != 'cancelled' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: entregables-qa
+          path: entregables
+
+      - name: Actualizar release qa-latest
+        run: |
+          (cd entregables && zip -qr ../entregables-qa.zip .)
+          notas="Excel de QA generados por CI a partir de ${GITHUB_SHA::7} (corrida #${{ github.run_number }}, $(date -u +'%Y-%m-%d %H:%M UTC')).
+          Se reemplazan en cada push a main. Corrida: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          if gh release view qa-latest >/dev/null 2>&1; then
+            gh release edit qa-latest --notes "$notas"
+          else
+            gh release create qa-latest --target "$GITHUB_SHA" --title "Entregables QA (último main)" --notes "$notas"
+          fi
+          gh release upload qa-latest entregables/*.xlsx entregables-qa.zip --clobber

@@ -2,13 +2,15 @@
 # persona: A/B/C -> usuario de GitHub en meta.yml (personas:). tcs: prefijos de ID de TC.
 epica: 29            # issue de la épica «Test trapitos»; se enlazan como sub-issues
 historias:
-- {titulo: "Tests unitarios: productos", tcs: [UTS_PRO, UTS_UTL], persona: A, puntos: 3, sprint: 5, padre: 26}
-- {titulo: "Tests unitarios: ventas y promociones", tcs: [UTS_VEN], persona: B, puntos: 5, sprint: 5, padre: 26}
+- {titulo: "Tests unitarios: productos", tcs: [UTS_PRO, UTS_UTL], persona: C, puntos: 3, sprint: 5, padre: 26}
+- {titulo: "Tests unitarios: ventas y promociones", tcs: [UTS_VEN], persona: C, puntos: 5, sprint: 5, padre: 26}
 - {titulo: "Tests unitarios: login y contactos", tcs: [UTS_SEG, UTS_CON], persona: C, puntos: 2, sprint: 5, padre: 26}
-- {titulo: "Tests de integración: inventario", tcs: [ITS_INV], persona: A, puntos: 3, sprint: 5, padre: 4}
-- {titulo: "Tests de integración: ventas y devoluciones", tcs: [ITS_VEN], persona: B, puntos: 5, sprint: 5, padre: 4}
+- {titulo: "Tests de integración: inventario", tcs: [ITS_INV], persona: C, puntos: 3, sprint: 5, padre: 4}
+- {titulo: "Tests de integración: ventas y devoluciones", tcs: [ITS_VEN], persona: C, puntos: 5, sprint: 5, padre: 4}
 - {titulo: "Tests de integración: reportes", tcs: [ITS_REP], persona: C, puntos: 5, sprint: 6, padre: 4}
 - {titulo: "Tests de integración: clientes y proveedores", tcs: [ITS_CON], persona: C, puntos: 2, sprint: 6, padre: 4}
-- {titulo: "Tests de sistema (interfaz)", tcs: [STS], persona: A, puntos: 3, sprint: 6, padre: 4}
-- {titulo: "Escenarios de aceptación automatizados", tcs: [ATS_VD_01, ATS_VD_02, ATS_VD_03, ATS_VD_04, ATS_VD_05, ATS_VD_06, ATS_VD_07], persona: B, puntos: 3, sprint: 6, padre: 4}
-- {titulo: "Pruebas manuales de aceptación", tcs: [ATS_VD_08, ATS_VD_09, ATS_UX, ATS_SEG, ATS_INS], persona: C, puntos: 3, sprint: 6, padre: 4}
+- {titulo: "Tests de sistema (interfaz)", tcs: [STS_LOG, STS_PRO, STS_PRM, STS_DEV, STS_UI], persona: A, puntos: 3, sprint: 6, padre: 4}
+- {titulo: "Tests de sistema: carga y recuperación", tcs: [STS_CAR, STS_REC], persona: C, puntos: 2, sprint: 6, padre: 4}
+- {titulo: "Tests de conformidad", tcs: [CTS], persona: C, puntos: 5, sprint: 6, padre: 4}
+- {titulo: "Escenarios de aceptación automatizados", tcs: [ATS_VD_01, ATS_VD_02, ATS_VD_03, ATS_VD_04, ATS_VD_05, ATS_VD_06, ATS_VD_07], persona: C, puntos: 3, sprint: 6, padre: 4}
+- {titulo: "Pruebas manuales de aceptación", tcs: [ATS_VD_08, ATS_VD_09, ATS_UX, ATS_SEG, ATS_INS], persona: A, puntos: 3, sprint: 6, padre: 4}
