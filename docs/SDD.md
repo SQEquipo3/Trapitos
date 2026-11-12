@@ -768,9 +768,9 @@ Los archivos de base, imágenes y registros deberán quedar bajo permisos de la 
 
 ### 8.2 Imágenes y archivos actuales
 
-`ProductosUI.store_product_image()` resuelve la ruta seleccionada, crea `mis_trapitos_imagenes` junto al módulo y guarda una copia con nombre saneado y marca temporal a segundos. Aplica orientación EXIF y conversión RGB para JPEG. `create_photo_image()` genera miniaturas; la vista mantiene la referencia `PhotoImage` para evitar que desaparezca.
+`ProductosUI.store_product_image()` delega en `mis_trapitos/data/product_images.py`: crea `mis_trapitos_imagenes` en la raíz de la aplicación y guarda una copia con nombre saneado y UUID, mediante creación exclusiva para evitar sobrescrituras. Aplica orientación EXIF y conversión RGB para JPEG. La base guarda una referencia relativa a esa carpeta. `create_photo_image()` resuelve la referencia desde la instalación actual y genera miniaturas; la vista mantiene la referencia `PhotoImage` para evitar que desaparezca.
 
-La copia de imagen sucede antes de guardar el producto y no integra una transacción con SQLite; puede quedar un archivo sin referencia si se cancela o falla el guardado. El nombre con precisión de segundos tampoco garantiza ausencia de colisiones. Un archivo inexistente produce un mensaje de visualización; no impide consultar el resto del producto.
+Al abrir la base, una migración idempotente convierte las rutas existentes recuperables: reutiliza archivos administrados, reconoce rutas antiguas de Windows y POSIX, y copia fotos externas disponibles. Una referencia no recuperable se conserva para no perder su ubicación original. El traslado requiere copiar la base y la carpeta de imágenes juntas, con la aplicación cerrada. La copia de imagen sucede antes de guardar el producto y no integra una transacción con SQLite; puede quedar un archivo sin referencia si se cancela o falla el guardado. Un archivo inexistente produce un mensaje de visualización; no impide consultar el resto del producto.
 
 El diseño objetivo centralizará originales en T01 con identificadores únicos, rutas relativas administradas y descarga mediante API. El respaldo incluirá los archivos referenciados, y la limpieza de archivos huérfanos deberá respetar las copias en curso. Las exportaciones CSV son salidas de consulta y no sustituyen un respaldo completo.
 
@@ -885,7 +885,7 @@ La aprobación del alcance de elaboración no se registra como aprobación del d
 | B-04 | SHA-256 directo, credenciales de ejemplo y rol sin autorización efectiva. | Desarrollo/administración: implementar credenciales, sesiones y matriz de permisos aprobada por negocio. |
 | B-05 | Fechas Python/SQL, modificador mensual con espacios y criterios ambiguos de reportes; devoluciones y descuentos generales no conciliados en todos los agregados. | Negocio/pruebas: acordar zona horaria, ventanas y semántica; desarrollo: corregir en trabajo separado con casos esperados. |
 | B-06 | Importes `REAL`, costos históricos dependientes del catálogo y moneda no configurada formalmente. | Negocio/desarrollo: acordar redondeo y moneda, guardar costos de venta y migrar con conciliación. |
-| B-07 | Copias de imagen anteriores al guardado, nombres que pueden colisionar y referencias absolutas locales. | Desarrollo: identificadores únicos, administración central y consistencia de archivos y respaldo. |
+| B-07 | UUID y rutas relativas con migración local implementados (#89). Persisten copias anteriores al guardado y referencias antiguas sin archivo recuperable. | Pendiente: administración central, limpieza de huérfanos y consistencia de archivos y respaldo; recuperar manualmente fotos ausentes. |
 | B-08 | Sin migraciones versionadas ni dependencias fijadas; ejemplos cargados en inicialización. | Desarrollo/soporte: separar producción y pruebas, empaquetar y verificar instalación sin internet. |
 | B-09 | Asignación de puestos, permisos, tiempos y políticas operativas son supuestos del SAD. | Administración/equipo: confirmar supuestos y medir objetivos antes del despliegue. |
 

@@ -7,17 +7,15 @@ importa el punto de entrada; los datos se leen y guardan con los repositorios.
 import csv
 import os
 import tkinter as tk
-from datetime import date, datetime
+from datetime import date
 from tkinter import filedialog, messagebox, ttk
 
 from PIL import Image, ImageOps, ImageTk
 
+from mis_trapitos.data import product_images
 from mis_trapitos.data.repositories import productos as productos_repo
 from mis_trapitos.data.repositories import reportes as reportes_repo
 from mis_trapitos.ui.base import ActionBar, FormGrid, ScrollablePage, make_tree
-
-
-IMAGE_DIR = "mis_trapitos_imagenes"
 
 
 class ProductosUI(ScrollablePage):
@@ -104,36 +102,10 @@ class ProductosUI(ScrollablePage):
 
     @staticmethod
     def resolve_image_path(path):
-        if not path:
-            return ""
-        path = path.strip().strip('"')
-        if os.path.exists(path):
-            return path
-        base = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        alternative = os.path.join(base, path)
-        return alternative if os.path.exists(alternative) else ""
+        return product_images.resolve_image_path(path)
 
     def store_product_image(self, source_path):
-        source_path = self.resolve_image_path(source_path) or source_path
-        if not os.path.exists(source_path):
-            raise ValueError("No se encontro la imagen seleccionada.")
-        base = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), IMAGE_DIR)
-        os.makedirs(base, exist_ok=True)
-        name, ext = os.path.splitext(os.path.basename(source_path))
-        ext = ext.lower()
-        if ext not in (".jpg", ".jpeg", ".png", ".gif", ".ppm", ".pgm"):
-            ext = ".jpg"
-        safe = "".join(ch for ch in name if ch.isalnum() or ch in ("_", "-")).strip() or "producto"
-        target = os.path.join(base, f"{safe}_{datetime.now().strftime('%Y%m%d%H%M%S')}{ext}")
-        with Image.open(source_path) as source:
-            img = ImageOps.exif_transpose(source)
-            if ext in (".jpg", ".jpeg"):
-                img.convert("RGB").save(target, "JPEG", quality=92)
-            elif ext == ".png":
-                img.save(target, "PNG")
-            else:
-                img.save(target)
-        return target
+        return product_images.store_product_image(source_path)
 
     def create_photo_image(self, path, size):
         resolved = self.resolve_image_path(path)
