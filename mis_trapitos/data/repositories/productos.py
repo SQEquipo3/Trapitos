@@ -4,6 +4,7 @@ Todas las funciones reciben el objeto Database (data/database.py).
 """
 
 from utils import now_text
+from mis_trapitos.data.product_images import normalize_image_path
 
 
 def listar_inventario(db):
@@ -60,6 +61,7 @@ def guardar(db, product_id, data):
     El alta registra un movimiento ENTRADA y la edición un AJUSTE si cambió
     el stock, en la misma transacción que el producto.
     """
+    data = (*data[:12], normalize_image_path(data[12]))
     with db.transaction():
         if product_id:
             old = db.one("SELECT stock FROM products WHERE id=?", (product_id,))
