@@ -71,4 +71,7 @@ nombres:
 #   - fecha: 2026-10-30
 #     quien: Nombre Apellido / QA - Equipo 3
 #     descripcion: Revisado y aprobado
-revisiones: []
+revisiones:
+- fecha: 2026-11-13
+  quien: Kelly Arellano / QA - Equipo 3
+  descripcion: Revisado y aprobado
