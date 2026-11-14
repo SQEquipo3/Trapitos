@@ -280,7 +280,7 @@ La red y las operaciones prolongadas deberán ejecutarse fuera de los manejadore
 
 ### 5.1 Criterios del modelo actual
 
-El esquema declarado en `Database.create_schema` contiene diez tablas de negocio. Todos los identificadores `id` son `INTEGER PRIMARY KEY AUTOINCREMENT`. Las fechas se almacenan como `TEXT`, los importes y porcentajes como `REAL`, y las cantidades como `INTEGER`. El diccionario registra las restricciones declaradas; no afirma que SQLite aplique tipado estricto.
+El esquema declarado en `Database.create_schema` contiene diez tablas de negocio. Todos los identificadores `id` son `INTEGER PRIMARY KEY AUTOINCREMENT`. Las fechas se almacenan como `TEXT`, los importes y porcentajes como `REAL`, y las cantidades como `INTEGER`. El diccionario registra las restricciones declaradas; no afirma que SQLite aplique tipado estricto. Además, el servicio LAN (#56) agrega la tabla técnica `lan_requests` (`request_key` TEXT PK, `fingerprint` TEXT, `sale_id` FK a `sales`, `employee_id`, `created_at`), que guarda la clave de idempotencia de cada venta remota junto con la venta en la misma transacción; no forma parte del modelo de negocio.
 
 Cada fila de `products` representa una variante comercial. No existen tablas independientes para producto base, talla, color, categoría, rol o método de pago. `suppliers.products_supplied` es texto descriptivo; la relación efectiva con productos reside en `products.supplier_id`. Las imágenes se referencian mediante `image_path`, no mediante BLOB.
 
@@ -821,7 +821,7 @@ La matriz toma los identificadores de `TRACEABILITY` sin alterar su numeración.
 | RF-24 | OP-06; mayor descuento vigente. | `promotions`, `products` | `report`: orden descendente y límite 1; VD-05/07. |
 | RF-25 | OP-06; compras por región. | `customers`, `sales` | `report`: agrupación regional; VD-07. |
 | RF-26 | OP-06; sin ventas en tres meses. | `products`, `sale_items`, `sales` | `report`: exclusión de productos vendidos en ventana; VD-07. |
-| RNF-01 | UI-02, OP-03/07; actualización de inventario. | `products`, `inventory_movements` | Prueba integrada local; validación distribuida pendiente, VD-08/09 y PA-08 del SAD. |
+| RNF-01 | UI-02, OP-03/07; actualización de inventario. | `products`, `inventory_movements`, `lan_requests` | Prueba integrada local y por servicio LAN (ITS_LAN_01, STS_LAN_01/02); validación manual pendiente: VD-08/09 y PA-08 del SAD. |
 
 Empleados, imágenes, devoluciones, cancelaciones y rastreabilidad tienen soporte en el código, aunque la lista RF no les asigna a todos un requisito independiente. Se documentan como funciones observadas; no se inventan identificadores RF nuevos.
 
@@ -879,7 +879,7 @@ La aprobación del alcance de elaboración no se registra como aprobación del d
 
 | ID | Evidencia / implicación | Tratamiento y responsable propuesto |
 | --- | --- | --- |
-| B-01 | No existe servicio LAN, sesiones remotas ni sincronización entre instancias. | Desarrollo: implementar separación y contratos de sección 7; pruebas: PA-01–PA-12 del SAD. |
+| B-01 | Parcial (#56): servicio LAN mínimo (`mis_trapitos/lan/`) con sesión, inventario, venta idempotente, escritor único y sondeo de 2 s. Faltan TLS, permisos por operación en el servicio, generación de recuperación y los demás módulos por LAN. | Desarrollo: completar contratos de sección 7; pruebas: UTS/ITS/STS_LAN_*, ATS_VD_08/09 y PA-01–PA-12 del SAD. |
 | B-02 | `save_product` confirma producto y movimiento por separado; lecturas de venta sin bloqueo anticipado. | Desarrollo: unidad de trabajo completa y validación dentro de transacción de escritura. |
 | B-03 | Devolución valida antes de escribir; cancelación presupone detalle único por producto y no tiene unicidad SQL por venta. | Desarrollo: agregar cantidades, serializar reposiciones y definir restricciones compatibles con históricos. |
 | B-04 | SHA-256 directo, credenciales de ejemplo y rol sin autorización efectiva. | Desarrollo/administración: implementar credenciales, sesiones y matriz de permisos aprobada por negocio. |

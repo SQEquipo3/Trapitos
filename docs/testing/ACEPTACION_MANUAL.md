@@ -11,8 +11,8 @@ Línea base de esta preparación: `main`, commit `5f8738e44a7707e079aa887bb8c3b0
 | ATS_INS_01 | Not executed | Equipo limpio, Python 3.12 con Tkinter, código y dependencias disponibles sin internet. |
 | ATS_UX_01 | Not executed | Cliente presente y datos preparados para una sesión de menos de cinco minutos. |
 | ATS_SEG_01 | Blocked por #57 | Probar una versión con la corrección de permisos. El [PR #77](https://github.com/SQEquipo3/Trapitos/pull/77) está pendiente de integración. |
-| ATS_VD_08 | Blocked por #56 | Servicio LAN funcional y dos terminales conectadas a los mismos datos de prueba. |
-| ATS_VD_09 | Blocked por #56 | La misma infraestructura LAN y un producto con una sola unidad. |
+| ATS_VD_08 | Not executed (antes Blocked por #56) | Versión con el servicio LAN de #56 y dos terminales conectadas a los mismos datos de prueba. |
+| ATS_VD_09 | Not executed (antes Blocked por #56) | La misma infraestructura LAN y un producto con una sola unidad. |
 
 Verificar el estado de [#57](https://github.com/SQEquipo3/Trapitos/issues/57) y [#56](https://github.com/SQEquipo3/Trapitos/issues/56) antes de la sesión. La existencia de un PR no acredita su integración ni la ejecución manual. Si se evalúa una rama de corrección, registrar su SHA; el resultado corresponde a esa versión.
 
@@ -81,7 +81,18 @@ Guardar versión, roles utilizados, acceso permitido, acceso denegado y comproba
 
 ## ATS_VD_08: inventario entre terminales
 
-Ejecutar únicamente después de resolver #56 para la versión evaluada. A y B deben usar el servicio LAN y los mismos datos de prueba; dos copias independientes de SQLite no satisfacen esta precondición.
+Ejecutar únicamente con una versión que incluya #56. A y B deben usar el servicio LAN y los mismos datos de prueba; dos copias independientes de SQLite no satisfacen esta precondición.
+
+Arranque de las terminales:
+
+```bash
+# Terminal A (principal): aplicación completa + servicio LAN en el puerto 8765
+python main.py --servidor
+# Terminal B (venta): sin base local, usa el servicio de A
+python main.py --terminal http://<IP de A>:8765
+```
+
+El firewall de A debe permitir conexiones entrantes al puerto 8765 desde la LAN. B inicia sesión con un usuario de la base de A. El inventario de B y la tabla de productos de A se refrescan solos cada 2 s.
 
 1. Preparar `ACEP-LAN-01` con stock 10 y abrir su inventario en ambas terminales.
 2. Vender una unidad en A mientras B conserva abierto el inventario.

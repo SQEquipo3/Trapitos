@@ -30,8 +30,16 @@ def obtener_por_codigo(db, code):
 
 
 def ajustar_stock(db, product_id, delta):
-    """Suma `delta` (negativo para descontar) al stock del producto."""
-    db.execute("UPDATE products SET stock = stock + ? WHERE id=?", (delta, product_id))
+    """Suma `delta` (negativo para descontar) al stock del producto.
+
+    El descuento es condicionado: solo se aplica si alcanza el stock vigente, de modo
+    que dos terminales no pueden vender la misma última pieza (#56). Si no alcanza,
+    lanza ValueError y la transacción que lo envuelve se revierte.
+    """
+    cur = db.execute("UPDATE products SET stock = stock + ? WHERE id=? AND stock + ? >= 0",
+                     (delta, product_id, delta))
+    if cur.rowcount != 1:
+        raise ValueError("Stock insuficiente.")
 
 
 def registrar_movimiento(db, product_id, movement_type, quantity, reason, sale_id=None):

@@ -12,6 +12,13 @@ def create_schema(db):
             last_order_date TEXT,
             created_at TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS lan_requests (
+            request_key TEXT PRIMARY KEY,
+            fingerprint TEXT NOT NULL,
+            sale_id INTEGER NOT NULL REFERENCES sales(id),
+            employee_id INTEGER NOT NULL,
+            created_at TEXT NOT NULL
+        );
         CREATE TABLE IF NOT EXISTS employees (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
