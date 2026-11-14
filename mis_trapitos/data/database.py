@@ -13,11 +13,15 @@ from mis_trapitos.data.seed import seed_examples
 
 
 class Database:
-    def __init__(self, path=DB_NAME, load_examples=True):
+    def __init__(self, path=DB_NAME, load_examples=True, wal=False):
         self.path = path
-        self.conn = sqlite3.connect(self.path)
+        # timeout: espera acotada si otra conexión (p. ej. el servicio LAN) tiene el bloqueo de escritura.
+        self.conn = sqlite3.connect(self.path, timeout=5)
         self.conn.row_factory = sqlite3.Row
         self.conn.execute("PRAGMA foreign_keys = ON")
+        if wal:
+            # WAL: lectores simultáneos con un escritor (servicio LAN + aplicación de la terminal principal).
+            self.conn.execute("PRAGMA journal_mode = WAL")
         self._tx_depth = 0
         create_schema(self)
         migrate_schema(self)
@@ -32,6 +36,8 @@ class Database:
         """Agrupa varias escrituras: commit al final o rollback completo si algo falla.
 
         Admite anidarse; solo la transacción más externa hace commit.
+        La externa abre con BEGIN IMMEDIATE: toma el bloqueo de escritura antes de
+        leer, así dos conexiones no validan el mismo stock a la vez (SDD 7.2, #56).
         """
         if self._tx_depth:
             self._tx_depth += 1
@@ -43,6 +49,8 @@ class Database:
         self._tx_depth = 1
         try:
             with self.conn:
+                if not self.conn.in_transaction:
+                    self.conn.execute("BEGIN IMMEDIATE")
                 yield
         finally:
             self._tx_depth = 0
@@ -52,6 +60,10 @@ class Database:
             return self.conn.execute(sql, params)
         with self.conn:
             return self.conn.execute(sql, params)
+
+    def version_datos(self):
+        """Cambia cada vez que OTRA conexión confirma escrituras en la base (PRAGMA data_version)."""
+        return self.scalar("PRAGMA data_version")
 
     def query(self, sql, params=()):
         return self.conn.execute(sql, params).fetchall()

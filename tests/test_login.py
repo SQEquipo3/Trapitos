@@ -3,6 +3,7 @@ import importlib.util
 from pathlib import Path
 import runpy
 import sqlite3
+import sys
 import tempfile
 import tkinter as tk
 from tkinter import messagebox
@@ -252,7 +253,8 @@ class StartupTest(unittest.TestCase):
         self.assertTrue(callable(module.main))
 
     def test_ejecutar_main_arranca_una_aplicacion_y_un_bucle(self):
-        with patch.object(application, "App") as app_class:
+        with patch.object(application, "App") as app_class, \
+                patch.object(sys, "argv", [str(self.path)]):
             runpy.run_path(str(self.path), run_name="__main__")
         app_class.assert_called_once_with()
         app_class.return_value.mainloop.assert_called_once_with()

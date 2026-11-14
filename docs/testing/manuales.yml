@@ -87,9 +87,8 @@
   name: VD-08 Consistencia de inventario entre dos terminales (LAN)
   reqs:
   - RNF-01
-  blocked_by: '#56'
   objective: Verificar que una venta en la terminal A se refleja en la terminal B en ≤ 5 s.
-  pre: 'Corrección #56 disponible y verificada; dos terminales en la misma LAN conectadas al mismo servicio y datos de prueba. Producto ACEP-LAN-01 con stock 10 en ambas. Ver ACEPTACION_MANUAL.md.'
+  pre: 'Versión con #56: terminal A con «python main.py --servidor» y terminal B con «python main.py --terminal http://<IP de A>:8765» en la misma LAN, mismos datos de prueba. Producto ACEP-LAN-01 con stock 10 en ambas. Ver ACEPTACION_MANUAL.md.'
   steps:
   - Identificar la versión y las terminales A y B; comprobar stock 10 en ambas
   - Mantener abierto el inventario de B y vender una unidad de ACEP-LAN-01 en A
@@ -97,7 +96,7 @@
   - Registrar duración y stock de ambas terminales
   expected:
   - Ambas terminales muestran stock 9; B se actualiza en un máximo de 5 segundos
-  comments: 'Bloqueado por #56. La verificación requiere dos terminales conectadas al mismo servicio LAN, con registros del cambio de inventario y del tiempo de actualización.'
+  comments: 'Desbloqueado por #56 (servicio LAN; regresión automatizada en STS_LAN_02 e ITS_LAN_01). La verificación requiere dos terminales conectadas al mismo servicio LAN, con registros del cambio de inventario y del tiempo de actualización.'
 
 - id: ATS_VD_09
   level: ATS
@@ -106,9 +105,8 @@
   reqs:
   - RNF-01
   - RF-04
-  blocked_by: '#56'
   objective: Solo una de dos ventas simultáneas del último artículo debe concretarse.
-  pre: 'Corrección #56 disponible y verificada; dos terminales conectadas al mismo servicio y datos de prueba. Producto ACEP-ULTIMO-01 con stock 1 y sin ventas previas de ese producto.'
+  pre: 'Versión con #56: terminales A (--servidor) y B (--terminal) conectadas al mismo servicio LAN y datos de prueba. Producto ACEP-ULTIMO-01 con stock 1 y sin ventas previas de ese producto.'
   steps:
   - Agregar una unidad de ACEP-ULTIMO-01 al carrito de A y al de B antes de confirmar
   - Confirmar las dos ventas a una señal acordada y registrar las respuestas
@@ -116,4 +114,4 @@
   expected:
   - Una venta se registra y la otra se rechaza por stock insuficiente
   - Solo se descuenta una unidad; el stock final es 0 en ambas terminales y nunca es negativo
-  comments: 'Bloqueado por #56. Registrar qué terminal concretó la venta y la evidencia de la otra respuesta; ver ACEPTACION_MANUAL.md.'
+  comments: 'Desbloqueado por #56 (regresión automatizada en STS_LAN_01). Registrar qué terminal concretó la venta y la evidencia de la otra respuesta; ver ACEPTACION_MANUAL.md.'

@@ -1,6 +1,7 @@
 """ Interfaz y orquestador"""
 
 import functools
+import sqlite3
 import tkinter as tk
 from tkinter import ttk
 
@@ -17,6 +18,9 @@ from mis_trapitos.ui.ventas import VentasUI
 from mis_trapitos.ui.styles import UI_COLORS, configure_styles
 from mis_trapitos.ui.reportes import ReportesUI
 from mis_trapitos.ui.rastreabilidad import RastreabilidadUI
+
+
+SONDEO_MS = 2000   # RNF-01: ventas de terminales LAN visibles aquí en ≤ 5 s (#56)
 
 
 class App(tk.Tk):
@@ -42,6 +46,8 @@ class App(tk.Tk):
         self.module_title = tk.StringVar(self, value="Productos")
         self.promociones_ui = None
         self.devoluciones_ui = None
+        self._version_datos = self.db.version_datos()
+        self._sondeo_id = self.after(SONDEO_MS, self.sondear_cambios)
         self.bind("<MouseWheel>", handle_page_event, add="+")
         self.bind("<FocusIn>", handle_page_event, add="+")
         self.protocol("WM_DELETE_WINDOW", self.on_close)
@@ -56,7 +62,19 @@ class App(tk.Tk):
         if int(label.cget("wraplength") or 0) != width:
             label.configure(wraplength=width)
 
+    def sondear_cambios(self):
+        """Refresca el inventario si otra conexión (el servicio LAN) confirmó cambios en la base."""
+        try:
+            version = self.db.version_datos()
+        except sqlite3.ProgrammingError:      # base ya cerrada: la ventana se está cerrando
+            return
+        if version != self._version_datos:
+            self._version_datos = version
+            self.refresh_products()
+        self._sondeo_id = self.after(SONDEO_MS, self.sondear_cambios)
+
     def on_close(self):
+        self.after_cancel(self._sondeo_id)
         try:
             self.db.close()
         finally:
