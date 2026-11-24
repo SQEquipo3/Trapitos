@@ -3,6 +3,7 @@ from functools import partial
 from itertools import combinations
 from pathlib import Path
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -62,7 +63,72 @@ def set_entry(entry, value):
     entry.insert(0, value)
 
 
+class PantallaVirtual:
+    """Servidor Xvfb privado para los escenarios de interfaz.
+
+    Los gestores de ventanas en mosaico (niri, sway, i3...) o con reglas propias
+    cambian el tamaño que la prueba pide con geometry(), y el resultado dependería
+    del escritorio de quien la ejecuta. Con Xvfb no hay gestor de ventanas y el
+    tamaño de la ventana es exactamente el solicitado, igual que en CI.
+    """
+
+    def __init__(self):
+        self.proceso = None
+        self.display = None
+
+    def iniciar(self):
+        if not sys.platform.startswith("linux") or shutil.which("Xvfb") is None:
+            return None
+        lectura, escritura = os.pipe()
+        try:
+            self.proceso = subprocess.Popen(
+                ["Xvfb", "-displayfd", str(escritura), "-screen", "0", "1920x1080x24", "-nolisten", "tcp"],
+                pass_fds=(escritura,), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            )
+            os.close(escritura)
+            escritura = None
+            with os.fdopen(lectura, encoding="ascii") as salida:
+                numero = salida.readline().strip()
+        finally:
+            if escritura is not None:
+                os.close(escritura)
+        if not numero:
+            self.detener()
+            return None
+        self.display = f":{numero}"
+        return self.display
+
+    def entorno(self):
+        env = dict(os.environ)
+        if self.display:
+            env["DISPLAY"] = self.display
+            env.pop("WAYLAND_DISPLAY", None)
+        return env
+
+    def detener(self):
+        if self.proceso is not None:
+            self.proceso.terminate()
+            try:
+                self.proceso.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                self.proceso.kill()
+                self.proceso.wait()
+            self.proceso = None
+
+
 class LayoutTest(unittest.TestCase):
+    pantalla = None
+
+    @classmethod
+    def setUpClass(cls):
+        cls.pantalla = PantallaVirtual()
+        cls.pantalla.iniciar()
+
+    @classmethod
+    def tearDownClass(cls):
+        if cls.pantalla is not None:
+            cls.pantalla.detener()
+
     def settle(self, app):
         previous = None
         for _ in range(12):
@@ -188,7 +254,8 @@ class LayoutTest(unittest.TestCase):
         )
         args = [sys.executable, "-X", "utf8", "-B", "-c", program,
                 method, str(scale), str(size[0]), str(size[1])]
-        with subprocess.Popen(args, cwd=Path(__file__).resolve().parents[1],
+        env = self.pantalla.entorno() if self.pantalla is not None else None
+        with subprocess.Popen(args, cwd=Path(__file__).resolve().parents[1], env=env,
                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                               text=True, encoding="utf-8") as process:
             try:
