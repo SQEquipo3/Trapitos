@@ -79,6 +79,7 @@ class VentasUI(ScrollablePage):
             self.cart_tree.insert("", tk.END, values=(
                 line["id"], line["code"], line["name"], line["quantity"],
                 dinero_centavos(line["unit_price"]),
+                f"{line['promo']:g}%",
                 dinero_centavos(line["line_total"]),
             ))
         try:

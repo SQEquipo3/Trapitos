@@ -114,8 +114,8 @@ class PromocionesUITest(ModuleWidgetTest):
         Esperado:
         - Se crea 1 promoción; al editar se actualiza la misma (sigue habiendo 1, ahora con 25 %).
         - Al limpiar, selected_promotion_id es None y las fechas vuelven a hoy y hoy+30.
-        - El carrito muestra la promoción de 25 %; venta: subtotal 300 (2 × 200 × 0.75), descuento 30,
-          total 270; el ticket dice «VENTA REGISTRADA» y «Total: $270.00»; el carrito queda vacío;
+        - El carrito muestra la promoción de 25 %; venta: subtotal 30000 centavos (2 × $200 × 0.75), descuento 3000,
+          total 27000; el ticket dice «VENTA REGISTRADA» y «Total: $270.00»; el carrito queda vacío;
           sale_items.promo_discount_percent = 25; stock 8.
         - Al reabrir sesión la pantalla es nueva, sin selección, y la promoción de 15 % sigue en la
           tabla y vigente.
@@ -152,16 +152,16 @@ class PromocionesUITest(ModuleWidgetTest):
         self.assertEqual(sale.cart_tree.set(cart_row, "promo"), "25%")
         sale.register_sale_ui()
         result = self.db.one("SELECT * FROM sales ORDER BY id DESC LIMIT 1")
-        self.assertAlmostEqual(result["subtotal"], 300)
-        self.assertAlmostEqual(result["discount_amount"], 30)
-        self.assertAlmostEqual(result["total"], 270)
+        self.assertEqual(result["subtotal"], 30000)
+        self.assertEqual(result["discount_amount"], 3000)
+        self.assertEqual(result["total"], 27000)
         self.assertIn("VENTA REGISTRADA", sale.ticket_text.get("1.0", "end"))
         self.assertIn("Total: $270.00", sale.ticket_text.get("1.0", "end"))
         self.assertEqual(sale.cart_tree.get_children(), ())
         self.assertEqual(sale.servicio.cart, [])
         line = self.db.one("SELECT * FROM sale_items WHERE sale_id=?", (result["id"],))
         self.assertEqual(line["promo_discount_percent"], 25)
-        self.assertAlmostEqual(line["line_total"], 300)
+        self.assertEqual(line["line_total"], 30000)
         self.assertEqual(self.db.scalar("SELECT stock FROM products WHERE id=?", (self.product_id,)), 8)
         self.error.assert_not_called()
 

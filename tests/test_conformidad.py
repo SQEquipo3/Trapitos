@@ -340,8 +340,8 @@ def test_operaciones_de_venta_cumplen_contrato_del_sdd(db, empleado, make_produc
     - Llamar devoluciones_srv.devolver(db, sale_id, pid, 1, 'x') y devoluciones_srv.cancelar_venta(db,
       sale_id, 'x').
     Esperado:
-    - Resultado = (sale_id, 600, 60, 540).
-    - La venta guardada tiene subtotal 600, discount_amount 60, total 540 y status 'ACTIVA'.
+    - Resultado = (sale_id, 60000, 6000, 54000) en centavos.
+    - La venta guardada tiene subtotal 60000, discount_amount 6000, total 54000 y status 'ACTIVA'.
     - devolver() y cancelar_venta() regresan None.
     """
     pid = make_product(price=200, stock=10)
@@ -349,9 +349,9 @@ def test_operaciones_de_venta_cumplen_contrato_del_sdd(db, empleado, make_produc
     assert isinstance(resultado, tuple) and len(resultado) == 4
     sale_id, subtotal, descuento, total = resultado
     assert isinstance(sale_id, int)
-    assert (subtotal, descuento, total) == pytest.approx((600, 60, 540))
+    assert (subtotal, descuento, total) == (60000, 6000, 54000)
     venta = ventas_repo.obtener_por_id(db, sale_id)
-    assert (venta["subtotal"], venta["discount_amount"], venta["total"], venta["status"]) == (600, 60, 540, "ACTIVA")
+    assert (venta["subtotal"], venta["discount_amount"], venta["total"], venta["status"]) == (60000, 6000, 54000, "ACTIVA")
     assert devoluciones_srv.devolver(db, sale_id, pid, 1, "x") is None
     assert devoluciones_srv.cancelar_venta(db, sale_id, "x") is None
 

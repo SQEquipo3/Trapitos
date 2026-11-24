@@ -5,6 +5,8 @@ El SQL y los nombres de los reportes se movieron sin modificarse.
 Recibe el objeto Database (data/database.py).
 """
 
+from utils import a_centavos
+
 
 def ejecutar(db, name, param=""):
     param = (param or "").strip()
@@ -35,14 +37,64 @@ def ejecutar(db, name, param=""):
                FROM sales WHERE status='ACTIVA'
                AND strftime('%Y-%m',sale_datetime)=strftime('%Y-%m','now')"""
         )
+
     if name == "Ventas por producto":
         return db.query(
-            """SELECT p.code AS codigo, p.name AS producto, SUM(si.quantity) AS piezas,
-                      SUM(si.line_total) AS ventas
-               FROM sale_items si JOIN products p ON p.id=si.product_id
-               JOIN sales s ON s.id=si.sale_id
-               WHERE s.status='ACTIVA' GROUP BY p.id ORDER BY piezas DESC"""
+        """
+        WITH partidas AS (
+            SELECT
+                si.sale_id,
+                si.product_id,
+                SUM(si.quantity) AS piezas_vendidas,
+                SUM(si.line_total) AS importe_vendido
+            FROM sale_items si
+            JOIN sales s ON s.id = si.sale_id
+            WHERE s.status = 'ACTIVA'
+            GROUP BY si.sale_id, si.product_id
+        ),
+        devoluciones AS (
+            SELECT
+                r.sale_id,
+                r.product_id,
+                SUM(r.quantity) AS piezas_devueltas
+            FROM returns r
+            JOIN sales s ON s.id = r.sale_id
+            WHERE s.status = 'ACTIVA'
+            GROUP BY r.sale_id, r.product_id
+        ),
+        neto AS (
+            SELECT
+                pa.product_id,
+                pa.piezas_vendidas
+                    - COALESCE(d.piezas_devueltas, 0) AS piezas,
+                pa.importe_vendido
+                    - CASE
+                        WHEN pa.piezas_vendidas > 0
+                        THEN CAST(ROUND(
+                            pa.importe_vendido
+                            * COALESCE(d.piezas_devueltas, 0)
+                            * 1.0 / pa.piezas_vendidas
+                        ) AS INTEGER)
+                        ELSE 0
+                      END AS ventas
+            FROM partidas pa
+            LEFT JOIN devoluciones d
+                ON d.sale_id = pa.sale_id
+                AND d.product_id = pa.product_id
         )
+        SELECT
+            p.code AS codigo,
+            p.name AS producto,
+            SUM(n.piezas) AS piezas,
+            SUM(n.ventas) AS ventas
+        FROM neto n
+        JOIN products p ON p.id = n.product_id
+        GROUP BY p.id
+        HAVING SUM(n.piezas) > 0
+        ORDER BY piezas DESC
+        """
+    )
+
     if name == "Ventas por metodo de pago":
         return db.query(
             "SELECT payment_method AS metodo, COUNT(*) AS ventas, SUM(total) AS total "
@@ -181,7 +233,8 @@ def ejecutar(db, name, param=""):
             (f"%{param}%",),
         )
     if name == "Productos con precio superior y existencias":
-        value = float(param or 0)
+        # El usuario escribe el precio en pesos; la base guarda centavos.
+        value = a_centavos(param or 0)
         return db.query(
             "SELECT code AS codigo, name AS producto, category AS categoria, sale_price AS precio, stock "
             "FROM products WHERE sale_price > ? AND stock > 0 ORDER BY sale_price DESC",

@@ -2,8 +2,39 @@ import sqlite3
 
 from mis_trapitos.data.database import Database
 
+from tests.tc import tc
 
+@tc(
+    "ITS_MIG_02",
+    nivel="ITS",
+    modulo="migraciones",
+    reqs=["RF-06", "RF-08"],
+    nombre="La migración convierte importes a centavos"
+)
 def test_migracion_convierte_importes_a_centavos(tmp_path):
+    """
+    Objetivo: Verificar que la migración convierta los importes monetarios
+    del esquema anterior de pesos a centavos enteros.
+
+    Precondiciones:
+    - Tener SQLite disponible.
+    - Crear una base de datos con la estructura anterior.
+    - Contar con productos y ventas que tengan importes en pesos.
+
+    Pasos:
+    - Crear una base de datos con la estructura anterior.
+    - Insertar un producto con precio de 0.10 pesos.
+    - Insertar una venta con total de 0.30 pesos.
+    - Abrir la base con Database para ejecutar la migración.
+    - Consultar los importes de products, sales y sale_items.
+    - Consultar la versión del esquema.
+
+    Esperado:
+    - El precio de compra y venta del producto debe ser 10 centavos.
+    - El total de la venta debe ser 30 centavos.
+    - El precio unitario debe ser 10 centavos.
+    - La versión de la base de datos debe ser 2.
+    """
     ruta = tmp_path / "anterior.db"
 
     # Crear una base con la estructura anterior y datos en pesos.

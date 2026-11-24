@@ -480,15 +480,13 @@ def test_repositorio_ventas_registrar_y_obtener_fecha(db, empleado, make_product
     assert ventas.obtener_fecha(db, sid).startswith(today_text())
 
 
-# ---------- defectos conocidos (B-03, B-05): el SDD los declara abiertos ----------
+# ---------- pruebas de regresión de cancelaciones y reportes ----------
 @tc("ITS_VEN_08", nivel="ITS", modulo="ventas", reqs=["RF-05"],
     nombre="Cancelación con líneas duplicadas por producto (brecha B-03)")
-@pytest.mark.xfail(strict=True, reason="#53 (B-03): la cancelación presupone una sola línea por producto")
 def test_cancelacion_con_lineas_duplicadas_repone_el_remanente_exacto(db, empleado, make_product):
-    """Detectar el defecto B-03 del SDD: cuando el carrito trae el mismo producto en dos líneas,
-    cancelar_venta() calcula el remanente por línea y resta la devolución en cada una, así que repone
-    menos piezas de las que debería. Esta prueba describe el comportamiento CORRECTO y hoy falla a
-    propósito.
+    """Comprobar que la cancelación agrupa las líneas repetidas del mismo producto y repone únicamente
+    las unidades que todavía no se han devuelto. La cantidad que se debe reponer es la suma de las
+    unidades vendidas menos las unidades devueltas.
 
     Precondiciones: Fixtures db, empleado y make_product(stock=20). Venta con dos líneas del mismo
       producto (2 y 3 piezas) y una devolución de 2.
@@ -499,10 +497,8 @@ def test_cancelacion_con_lineas_duplicadas_repone_el_remanente_exacto(db, emplea
     - Comparar stock(db, pid) con 20.
     Esperado:
     - Stock final = 20 (se reponen exactamente las 3 piezas pendientes).
-    Comentarios: DEFECTO ABIERTO B-03 (SDD, sección 11), issue #53. La prueba está marcada
-      @pytest.mark.xfail(strict=True): el CI sigue en verde mientras el bug exista y el Excel la reporta
-      como Failed ligada al #53. Cuando se corrija cancelar_venta() (agrupar las cantidades por producto),
-      quitar el xfail.
+    Comentarios: Prueba de regresión para el defecto B-03, issue #53. Debe pasar sin xfail
+      cuando cancelar_venta() agrupa las cantidades por producto.
     """
     pid = make_product(stock=20)
     sid, *_ = ventas_srv.registrar(db, None, empleado, "Efectivo", 0, [item(pid, 2), item(pid, 3)])
@@ -513,12 +509,9 @@ def test_cancelacion_con_lineas_duplicadas_repone_el_remanente_exacto(db, emplea
 
 @tc("ITS_REP_07", nivel="ITS", modulo="reportes", reqs=["RF-17", "RF-18"],
     nombre="Reportes de ventas descuentan devoluciones (brecha B-05)")
-@pytest.mark.xfail(strict=True, reason="#54 (B-05): los reportes de ventas no descuentan devoluciones")
 def test_reporte_ventas_por_producto_descuenta_devoluciones(db, empleado, make_product):
-    """Detectar el defecto B-05 del SDD: el reporte 'Ventas por producto' de reportes_repo.ejecutar()
-    (mis_trapitos/data/repositories/reportes.py) suma sale_items sin restar las devoluciones, así que
-    una venta devuelta completa sigue contando como vendida. La prueba describe el comportamiento
-    CORRECTO y hoy falla a propósito.
+    """Comprobar que el reporte 'Ventas por producto' descuenta las unidades devueltas. Una venta
+    devuelta completamente no debe seguir apareciendo como producto vendido.
 
     Precondiciones: Fixtures db, empleado y make_product(price=100, stock=10).
     Pasos:
@@ -527,8 +520,8 @@ def test_reporte_ventas_por_producto_descuenta_devoluciones(db, empleado, make_p
     - Ejecutar reportes_repo.ejecutar(db, 'Ventas por producto').
     Esperado:
     - El reporte no muestra el producto, o lo muestra con piezas = 0.
-    Comentarios: DEFECTO ABIERTO B-05 (SDD, sección 11), issue #54. Prueba marcada xfail(strict=True);
-      en el Excel sale Failed ligada al #54. Al corregir la consulta (restar returns), quitar el xfail.
+    Comentarios: Prueba de regresión para el defecto B-05, issue #54. La consulta del reporte
+      debe descontar las cantidades registradas en returns.
     """
     pid = make_product(price=100, stock=10)
     sid, *_ = ventas_srv.registrar(db, None, empleado, "Efectivo", 0, [item(pid, 4)])
@@ -559,26 +552,24 @@ def test_tres_importes_de_diez_centavos_suman_treinta(
     - El producto tiene un precio de venta de $0.10.
     - El producto cuenta con existencias suficientes (10 unidades).
 
+    
     Pasos:
-    1. Crear un producto con precio de $0.10 y stock de 10 unidades.
-    2. Registrar una venta con tres unidades del producto.
-    3. Recuperar el subtotal, descuento y total devueltos por
-       ventas_srv.registrar().
-    4. Consultar los importes guardados en la tabla sales.
-    5. Consultar el precio unitario y el importe de la partida
-       guardados en sale_items.
+    - Crear un producto con precio de 10 centavos y stock de 10 unidades.
+    - Registrar una venta de tres unidades del producto.
+    - Recuperar el subtotal, descuento y total devueltos por ventas_srv.registrar().
+    - Consultar los importes guardados en la tabla sales.
+    - Consultar el precio unitario y el importe de la partida guardados en sale_items.
 
-    Resultados esperados:
-    - El subtotal de la venta es de 30 centavos.
+
+      Esperado:
+    - El subtotal es de 30 centavos.
     - El descuento es de 0 centavos.
-    - El total de la venta es de 30 centavos.
-    - La tabla sales almacena subtotal = 30,
-      discount_amount = 0 y total = 30.
-    - La tabla sale_items almacena unit_price = 10
-      y line_total = 30.
-    - Todos los importes se almacenan como números enteros.
-    - No existen diferencias de redondeo en la operación.
-    """
+    - El total es de 30 centavos.
+    - sales.subtotal almacena 30.
+    - sales.discount_amount almacena 0.
+    - sales.total almacena 30.
+    - sale_items.unit_price almacena 10.
+    - sale_items.line_total almacena 30."""
 
     pid = make_product(price=0.10, stock=10)
 
@@ -612,7 +603,32 @@ def test_tres_importes_de_diez_centavos_suman_treinta(
     assert partida["unit_price"] == 10
     assert partida["line_total"] == 30
 
+@tc(
+    "UTS_VEN_PRECIO_CENTAVOS",
+    nivel="UTS",
+    modulo="ventas",
+    reqs=["RF-06"],
+    nombre="El precio del producto se guarda en centavos"
+)
 def test_precio_de_producto_se_guarda_en_centavos(db, make_product):
+    """
+    Objetivo:
+    Comprobar que el precio de venta de un producto se almacena
+    utilizando centavos enteros.
+
+    Precondiciones:
+    - Tener una base de datos inicializada.
+    - Contar con la función make_product para registrar productos.
+
+    Pasos:
+    - Crear un producto con un precio de venta de 0.10 pesos.
+    - Consultar el precio almacenado en la tabla products.
+    - Recuperar el precio de venta del producto.
+
+    Esperado:
+    - El precio de venta debe almacenarse como 10 centavos.
+    - El valor recuperado debe ser un número entero.
+    """
     pid = make_product(price=0.10)
 
     producto = db.one(
@@ -621,3 +637,4 @@ def test_precio_de_producto_se_guarda_en_centavos(db, make_product):
     )
 
     assert producto["sale_price"] == 10
+    assert isinstance(producto["sale_price"], int)

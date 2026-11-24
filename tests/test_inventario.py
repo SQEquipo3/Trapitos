@@ -37,13 +37,13 @@ def test_alta_producto_guarda_datos(db):
       productos.obtener_por_codigo(db, 'BUSCA').
     - Llamar productos.obtener_por_codigo(db, 'NO-EXISTE').
     Esperado:
-    - El producto leído tiene code = 'BL-01', stock = 5 y sale_price = 200.
+    - El producto leído tiene code = 'BL-01', stock = 5 y sale_price = 20000 (centavos).
     - La búsqueda por 'BUSCA' regresa el mismo id que regresó guardar().
     - El código inexistente regresa None.
     """
     pid = productos.guardar(db, None, datos())
     p = productos.obtener_por_id(db, pid)
-    assert (p["code"], p["stock"], p["sale_price"]) == ("BL-01", 5, 200)
+    assert (p["code"], p["stock"], p["sale_price"]) == ("BL-01", 5, 20000)
 
 
 @tc("UTS_PRO_02", nivel="UTS", modulo="productos", reqs=["RF-01"],

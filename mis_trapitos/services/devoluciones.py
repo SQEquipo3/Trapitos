@@ -29,21 +29,58 @@ def devolver(db, sale_id, product_id, quantity, reason):
                                             reason or "Devolucion", sale_id)
 
 
+
 def cancelar_venta(db, sale_id, reason):
-    """Cancela la venta y regresa al inventario lo que no se había devuelto."""
+    """Cancela la venta y repone solo las piezas que no se habían devuelto."""
+
     sale = ventas_repo.obtener_por_id(db, sale_id)
+
     if not sale:
         raise ValueError("Venta no encontrada.")
+
     if sale["status"] == "CANCELADA":
         raise ValueError("La venta ya esta cancelada.")
-    items = ventas_repo.partidas(db, sale_id)
+
+    # Agrupar las cantidades vendidas por producto.
+    cantidades_vendidas = {}
+
+    for item in ventas_repo.partidas(db, sale_id):
+        product_id = int(item["product_id"])
+        quantity = int(item["quantity"])
+
+        cantidades_vendidas[product_id] = (
+            cantidades_vendidas.get(product_id, 0) + quantity
+        )
+
     with db.transaction():
-        for item in items:
-            returned_qty = devoluciones_repo.cantidad_devuelta(db, sale_id, item["product_id"])
-            restore_qty = max(0, int(item["quantity"]) - int(returned_qty))
+        # Cada producto se procesa una sola vez.
+        for product_id, sold_qty in cantidades_vendidas.items():
+
+            returned_qty = int(
+                devoluciones_repo.cantidad_devuelta(
+                    db, sale_id, product_id
+                )
+            )
+
+            # Reponer únicamente las piezas que todavía no se devolvieron.
+            restore_qty = max(0, sold_qty - returned_qty)
+
             if restore_qty > 0:
-                productos_repo.ajustar_stock(db, item["product_id"], restore_qty)
-                productos_repo.registrar_movimiento(db, item["product_id"], "CANCELACION", restore_qty,
-                                                    reason or "Cancelacion", sale_id)
+                productos_repo.ajustar_stock(
+                    db, product_id, restore_qty
+                )
+
+                productos_repo.registrar_movimiento(
+                    db,
+                    product_id,
+                    "CANCELACION",
+                    restore_qty,
+                    reason or "Cancelacion",
+                    sale_id,
+                )
+
         ventas_repo.marcar_cancelada(db, sale_id)
-        devoluciones_repo.insertar_cancelacion(db, sale_id, now_text(), reason or "Cancelacion")
+
+        devoluciones_repo.insertar_cancelacion(
+            db, sale_id, now_text(), reason or "Cancelacion"
+        )
