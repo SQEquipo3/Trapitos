@@ -2,7 +2,7 @@
 
 # Información de la aplicación
 APP_TITLE = "Mis trapitos - Sistema local"
-APP_VERSION = "7.0"
+APP_VERSION = "8.0"
 
 # Base de datos
 DB_NAME = "mis_trapitos.db"
