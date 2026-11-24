@@ -5,14 +5,14 @@ from datetime import datetime, timedelta
 from PIL import Image, ImageDraw
 
 from config import DATETIME_FMT, PAYMENT_METHODS
+from mis_trapitos.data.product_images import image_directory
 from utils import date_offset, hash_password, now_text
 from mis_trapitos.data.repositories import productos as productos_repo
 from mis_trapitos.services import devoluciones as devoluciones_srv
 from mis_trapitos.services import ventas as ventas_srv
 
 def create_sample_images(db):
-    from mis_trapitos.ui.productos import IMAGE_DIR
-    base = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), IMAGE_DIR)
+    base = image_directory()
     os.makedirs(base, exist_ok=True)
     specs = [
         ("camisa_roja.jpg", (210, 70, 70), (245, 210, 210), "Camisa"),
@@ -52,7 +52,7 @@ def create_sample_images(db):
                 draw.line((130, 85, 130, 215), fill=(90, 55, 40), width=3)
             draw.text((85, 232), label, fill=(60, 60, 60))
             img.save(path, "JPEG", quality=92)
-        paths.append(path)
+        paths.append(filename)
     return paths
 
 

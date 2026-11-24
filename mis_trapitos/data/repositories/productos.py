@@ -3,8 +3,9 @@
 Todas las funciones reciben el objeto Database (data/database.py).
 """
 
-from utils import now_text
 from utils import now_text, a_centavos
+from mis_trapitos.data.product_images import normalize_image_path
+
 
 def listar_inventario(db):
     """Filas para la tabla de inventario (el orden de columnas importa a la UI)."""
@@ -63,13 +64,19 @@ def proveedor_existe(db, supplier_id):
 
 
 def guardar(db, product_id, data):
-    """Guarda un producto convirtiendo sus precios de pesos a centavos."""
+    """Alta (product_id=None) o edición. Regresa el id del producto.
 
+    Convierte los precios de pesos a centavos. El alta registra un movimiento
+    ENTRADA y la edición un AJUSTE si cambió el stock, en la misma
+    transacción que el producto.
+    """
     data = list(data)
 
     # Los precios capturados en la interfaz están expresados en pesos.
     data[5] = a_centavos(data[5])
     data[6] = a_centavos(data[6])
+    data[12] = normalize_image_path(data[12])
+    data = tuple(data)
 
     with db.transaction():
         if product_id:

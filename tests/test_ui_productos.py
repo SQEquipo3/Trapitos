@@ -16,6 +16,7 @@ from unittest.mock import patch
 from PIL import Image
 
 from mis_trapitos.data.database import Database
+from mis_trapitos.data import product_images
 from mis_trapitos.ui import app as application
 from mis_trapitos.ui import productos as ui_productos
 from mis_trapitos.data.repositories import empleados as empleados_repo
@@ -277,7 +278,7 @@ class ProductosUITest(TemporaryInventoryTest):
           diálogos. Pantalla ProductosUI(root, db) de mis_trapitos/ui/productos.py. El helper
           fill_product() llena los 13 campos del formulario (p_code, p_name, ..., p_image) con
           BLUSA-M-AZUL, stock 10. Imagen PNG azul de 320×400 creada con Pillow en una carpeta temporal;
-          IMAGE_DIR y filedialog.askopenfilename parcheados.
+          image_directory y filedialog.askopenfilename parcheados.
         Pasos:
         - Llenar el formulario y llamar choose_product_image().
         - Revisar el archivo copiado (carpeta, tamaño y color) y llamar add_product_ui().
@@ -287,7 +288,7 @@ class ProductosUITest(TemporaryInventoryTest):
         Esperado:
         - La imagen se copia a IMAGE_DIR (ruta distinta al original) con el mismo tamaño y color, y hay
           vista previa.
-        - products.image_path guarda la ruta copiada; al limpiar desaparece la vista previa y al
+        - products.image_path guarda la ruta relativa; al limpiar desaparece la vista previa y al
           reseleccionar se recupera.
         - Con archivo inexistente la etiqueta dice 'No se pudo mostrar la foto' y el producto se guarda
           igual.
@@ -295,11 +296,13 @@ class ProductosUITest(TemporaryInventoryTest):
         source = self.directory / "blusa azul.png"
         Image.new("RGB", (320, 400), "blue").save(source)
         destination = self.directory / "imagenes"
+        self.start_patch(patch.object(product_images, "image_directory", return_value=destination))
         fill_product(self.ui)
-        with patch.object(ui_productos, "IMAGE_DIR", str(destination)), \
-                patch.object(ui_productos.filedialog, "askopenfilename", return_value=str(source)):
+        with patch.object(ui_productos.filedialog, "askopenfilename", return_value=str(source)):
             self.ui.choose_product_image()
-        stored = Path(self.ui.p_image.get())
+        reference = self.ui.p_image.get()
+        self.assertFalse(Path(reference).is_absolute())
+        stored = destination / reference
         self.assertEqual(stored.parent, destination)
         self.assertTrue(stored.is_file())
         self.assertNotEqual(stored, source)
@@ -310,11 +313,11 @@ class ProductosUITest(TemporaryInventoryTest):
         self.ui.add_product_ui()
         product_id = self.ui.selected_product_id
         self.assertEqual(self.db.scalar("SELECT image_path FROM products WHERE id=?", (product_id,)),
-                         str(stored))
+                         reference)
         self.ui.clear_product_form()
         self.assertIsNone(self.ui.product_photo_ref)
         select_product(self.ui, "BLUSA-M-AZUL")
-        self.assertEqual(self.ui.p_image.get(), str(stored))
+        self.assertEqual(self.ui.p_image.get(), reference)
         self.assertIsNotNone(self.ui.product_photo_ref)
         self.error.assert_not_called()
 

@@ -9,6 +9,7 @@ import sqlite3
 from contextlib import contextmanager
 
 from config import DB_NAME
+from mis_trapitos.data.product_images import migrate_product_image_paths
 from mis_trapitos.data.schema import create_schema, migrate_schema
 from mis_trapitos.data.seed import seed_examples
 
@@ -36,6 +37,7 @@ class Database:
         # Crea las tablas y aplica las migraciones.
         create_schema(self)
         migrate_schema(self)
+        migrate_product_image_paths(self)
 
         # Carga datos de ejemplo solamente si se solicita.
         if load_examples:

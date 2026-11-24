@@ -10,7 +10,7 @@ import urllib.parse
 import webbrowser
 from tkinter import messagebox, ttk
 import tkinter as tk
-from utils import dinero, today_text
+from utils import dinero_centavos, today_text
 from mis_trapitos.ui.base import ActionBar, FormGrid, ScrollablePage, make_tree
 
 from mis_trapitos.data.repositories import clientes as clientes_repo
@@ -148,8 +148,8 @@ class ContactosUI(ttk.Frame):
                 text.insert(
                     tk.END,
                     f"Venta {row['venta']} | {row['fecha']} | {row['codigo']} {row['producto']} | "
-                    f"Cantidad {row['cantidad']} | Linea {dinero(row['total_linea'])} | "
-                    f"Total venta {dinero(row['total_venta'])} | {row['estado']}\n",
+                    f"Cantidad {row['cantidad']} | Linea {dinero_centavos(row['total_linea'])} | "
+                    f"Total venta {dinero_centavos(row['total_venta'])} | {row['estado']}\n",
                 )
         except Exception as e:
             messagebox.showerror("Historial", str(e), parent=self)
@@ -177,7 +177,7 @@ class ContactosUI(ttk.Frame):
         if compras > 0:
             lines.append(
                 f"De acuerdo con su historial, contamos con {compras} compra(s) registrada(s) a su "
-                f"nombre, por un total acumulado de {dinero(total)}."
+                f"nombre, por un total acumulado de {dinero_centavos(total)}."
             )
             if ultima:
                 lines.append(f"Su compra mas reciente fue registrada el {ultima}.")

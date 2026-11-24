@@ -116,3 +116,21 @@ python -m pytest tests/test_login.py tests/test_ui_productos.py tests/test_promo
 En Linux sin escritorio, anteponer `xvfb-run -a`. En Windows, `--capture=sys` evita interferencias entre la captura de archivos de pytest y Tcl/Tk. Para generar los entregables finales, ejecutar la suite completa con cobertura y después el generador, como se indica arriba; una ejecución parcial no contiene los resultados de los demás niveles.
 
 En el artefacto `entregables-qa`, la hoja `Detailed status` del Test Report debe incluir `STS_LOG_01–03`, `STS_PRO_01–07`, `STS_PRM_01–02`, `STS_DEV_01–02` y `STS_UI_01–02`. El defecto de fechas de promociones detectado por `STS_PRM_02` se sigue en [#78](https://github.com/SQEquipo3/Trapitos/issues/78).
+
+## Cobertura de la pantalla de contactos (#91)
+
+`tests/test_ui_contactos.py` agrega 23 pruebas de la pantalla `ContactosUI`, agrupadas en cinco casos: `STS_CON_01` (clientes), `STS_CON_02` (proveedores), `STS_CON_03` (empleados), `STS_CON_04` (validaciones) y `STS_CON_05` (historial y correo). Usan widgets Tkinter reales, una pantalla y una base temporal independientes por prueba, y un intérprete Tk compartido dentro del módulo.
+
+Los recorridos comprueban altas, selección, edición, limpieza, datos obligatorios, claves duplicadas, campos opcionales nulos, selecciones obsoletas, conservación y cambio de contraseñas, historial y vista previa del correo. Solo se sustituyen los diálogos, el navegador y el portapapeles: las pruebas no abren el cliente de correo ni modifican el portapapeles del usuario.
+
+Para comprobar el mínimo del 80 % de cobertura de líneas exigido en [#91](https://github.com/SQEquipo3/Trapitos/issues/91):
+
+```bash
+python -m pytest tests/test_ui_contactos.py --capture=sys --cov=mis_trapitos.ui.contactos --cov-report=term-missing --cov-fail-under=80
+```
+
+Usar el Python del entorno virtual con `requirements-dev.txt` instalado; en Linux sin escritorio, anteponer `xvfb-run -a`. Las pruebas de permisos de `tests/test_permisos_empleados.py` complementan estos casos en la suite completa. Para actualizar `reports/coverage.json` y los resultados de todos los niveles, ejecutar:
+
+```bash
+python -m pytest --capture=sys --cov=mis_trapitos --cov-report=term-missing --cov-report=json:reports/coverage.json
+```
