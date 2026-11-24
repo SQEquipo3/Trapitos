@@ -1,26 +1,21 @@
 # Documento de Diseño de Software (SDD)
 
-## Mis Trapitos — Sistema de gestión de tienda de ropa
+Mis Trapitos 8.0 · Equipo 3 · MT-SDD-001
 
 | Control documental | Valor |
 | --- | --- |
-| Identificador | MT-SDD-001 |
-| Versión | 1.0 |
-| Fecha de elaboración | 10 de septiembre de 2026 |
-| Estado | Elaborado para revisión del equipo; validación documental registrada en la sección 10 |
-| Historia de usuario | [#5 — Software Design Document](https://github.com/SQEquipo3/Trapitos/issues/5) |
-| Épica | [#3 — Creación y/o actualización de documentación del sistema](https://github.com/SQEquipo3/Trapitos/issues/3) |
-| Sistema de referencia | Mis Trapitos, versión de aplicación 7.0 |
-| Línea base de código | Commit `bbe7fc1cf91eea5f3e9c80e22d80ca9688811c35` |
-| Documento relacionado | [Documento de Arquitectura de Software (SAD), versión 1.0](SAD.md) |
-| Audiencia | Equipo de desarrollo, responsables de pruebas, administración y soporte |
-| Aprobación del documento final | Pendiente de revisión por el equipo responsable |
+| Versión y fecha | 2.0 · 24 de noviembre de 2026 |
+| Línea base | `main` en `276fcb5`, aplicación 8.0 |
+| Estado | Diseño implementado. Revisión del equipo pendiente |
+| Documentos relacionados | [SAD 2.0](SAD.md) e [índice de entregables](README.md) |
+| Historias | [Diseño #5](https://github.com/SQEquipo3/Trapitos/issues/5) y [documentación #3](https://github.com/SQEquipo3/Trapitos/issues/3) |
 
 ### Historial de revisiones
 
 | Versión | Fecha | Descripción |
 | --- | --- | --- |
-| 1.0 | 2026-09-10 | Descripción del diseño implementado, especificación del diseño objetivo para siete terminales, modelo relacional, interfaces, secuencias y trazabilidad. |
+| 1.0 | 10/09/2026 | Documentamos el diseño de la v7 y propusimos el despliegue para siete terminales. |
+| 2.0 | 24/11/2026 | Contrastamos las capas, los contratos y las brechas de la 8.0 con los 97 casos de la corrida 75. |
 
 ### Índice
 
@@ -39,874 +34,351 @@
 
 ## 1. Introducción y criterios de elaboración
 
-### 1.1 Propósito
+Diseñamos Mis Trapitos para que la persona que vende una prenda pueda registrar el cobro y saber cuántas piezas quedan de esa talla y color. El mismo registro alimenta el historial del cliente, los movimientos de inventario y los reportes. Este documento describe lo que ejecuta la versión 8.0. El SAD explica por qué elegimos esa distribución.
 
-Especificar la estructura técnica de Mis Trapitos con el detalle necesario para comprender, mantener y verificar sus componentes de escritorio, reglas de operación y persistencia relacional. El documento complementa el SAD: aquel justifica las decisiones arquitectónicas; este describe responsabilidades, interfaces, datos, secuencias y contratos de diseño.
-
-La descripción se sustenta en la revisión de `mis_trapitos_app_v7.py`, `ui_productos.py`, `tests/test_ui_productos.py` y el SAD presentes en la línea base identificada. Los nombres de clases, métodos, tablas y campos conservan la nomenclatura del código. Las referencias por símbolo permiten localizar la evidencia sin depender de números de línea que cambian con cada edición.
-
-### 1.2 Alcance
-
-Incluye autenticación, productos y variantes, existencias y movimientos, ventas y métodos de pago, descuentos y promociones, clientes e historial, proveedores, empleados, devoluciones, cancelaciones, reportes, imágenes y exportación CSV. Comprende el diseño objetivo de siete clientes Tkinter y un servicio local con SQLite, conforme al SAD.
-
-El registro de un método de pago no constituye procesamiento bancario. La preparación de correo no constituye envío implementado. Comercio electrónico, facturación fiscal y sincronización entre sucursales quedan fuera del alcance definido en el SAD.
-
-### 1.3 Referencia normativa y adaptación
-
-La historia solicita un SDD bajo IEEE 830. IEEE 830-1998 se refiere a la especificación de requisitos de software (SRS); IEEE 1016-2009 se refiere a las descripciones de diseño de software. Por ello, este documento conserva la identificación y trazabilidad de requisitos solicitada bajo IEEE 830 y utiliza IEEE 1016 como referencia de organización del diseño. Esta adaptación fue aprobada como parte de la propuesta de elaboración. [IEEE 830-1998](https://standards.ieee.org/ieee/830/1222/), [IEEE 1016-2009](https://standards.ieee.org/ieee/1016/4502/).
-
-La referencia a estos estándares no representa una certificación de conformidad integral. No se sustituye un SRS formal: `TRACEABILITY` es la fuente de requisitos disponible en el código y se identifica como tal.
-
-### 1.4 Convenciones y estados
-
-| Término | Significado en este documento |
-| --- | --- |
-| Actual | Comportamiento o estructura observado en la línea base. Su identificación no implica prueba exhaustiva. |
-| Objetivo / propuesto | Diseño pendiente de implementación, derivado del SAD o detallado en este SDD. |
-| Brecha | Diferencia entre el estado actual y el comportamiento requerido o propuesto. |
-| PK / FK / NN / UQ | Clave primaria, clave foránea, no nulo y unicidad, respectivamente. |
-| Variante | Registro de `products` con código, talla, color y existencias propias. |
-| LAN | Red local de la tienda; distinta de la conexión a internet. |
-| Unidad de trabajo | Componente propuesto que controla una transacción completa de negocio. |
-| Idempotencia | Repetición de una misma solicitud sin repetir sus efectos confirmados. |
-| RPO / RTO | Objetivos de pérdida temporal de datos y tiempo de recuperación. |
-
-En las secciones de diseño objetivo, «deberá» establece una condición para su futura implementación. Las entidades del modelo relacional no se presentan como clases Python existentes.
+El Test Plan incluye datos, servicios, promociones, doce requisitos de reportes, pantallas Tkinter, aceptación y conformidad. Su hoja Strategy aún enumera LAN, permisos y migraciones fuera de alcance. En las secciones 7 a 11 identificamos lo que las fichas de esa misma edición sí probaron y las verificaciones manuales pendientes.
 
 ## 2. Contexto y arquitectura
 
-### 2.1 Arquitectura actual
+Separar la captura de la escritura nos permitió usar la misma regla de venta desde el mostrador y desde una terminal remota. En la terminal principal, `App` abre una conexión local y la comparte con las pantallas. En modo servidor hay además una conexión del trabajador HTTP a la misma base. Las terminales remotas usan JSON sobre HTTP para consultar inventario y vender.
 
-La aplicación ejecuta interfaz, reglas y acceso a SQLite en un proceso local. `App` crea una instancia de `Database` y una pestaña `ProductosUI`, a la que entrega esa misma instancia. `Database.__init__` abre `mis_trapitos.db`, activa claves foráneas, crea o migra el esquema y carga ejemplos. La ruta de la base depende del directorio de ejecución.
-
-**Figura D-01. Componentes implementados.** Las flechas indican dependencias o acceso a recursos.
-
-```mermaid
-flowchart LR
-    U[Usuario] --> A[App: ventana Tkinter]
-    A --> P[ProductosUI: pestaña de productos]
-    A --> D[Database: reglas y SQL]
-    P --> D
-    D --> B[(mis_trapitos.db)]
-    P --> I[Imágenes locales mediante Pillow]
-    A --> C[Reportes CSV]
-    P --> C
-```
-
-La separación es parcial: `App` y `ProductosUI` también construyen consultas SQL. No existen servicios independientes de dominio, repositorios ni transporte de red. La actualización de inventario entre pestañas ocurre dentro de la misma aplicación.
-
-### 2.2 Despliegue objetivo para siete terminales
-
-Se conserva la decisión del SAD: siete clientes de escritorio, un servicio Python independiente de la interfaz administrativa y una base SQLite autoritativa en disco local de T01. T02–T07 acceden al servicio por LAN; el cliente de T01 utiliza bucle local. No se abre la base desde una carpeta compartida.
-
-**Figura D-02. Despliegue propuesto; componentes de red pendientes de implementación.**
-
-```mermaid
-flowchart TB
-    subgraph T01[T01: anfitrión local]
-        C1[Cliente Tkinter T01]
-        API[Servicio Python: API y casos de uso]
-        DB[(SQLite local)]
-        F[Imágenes y registros]
-        C1 -->|HTTPS por bucle local| API
-        API --> DB
-        API --> F
-    end
-    C2[T02: ventas] --> LAN[Red local privada]
-    C3[T03: ventas] --> LAN
-    C4[T04: ventas] --> LAN
-    C5[T05: inventario] --> LAN
-    C6[T06: productos y proveedores] --> LAN
-    C7[T07: reportes] --> LAN
-    LAN -->|HTTPS y JSON| API
-    API --> BK[Respaldo en medio separado]
-```
-
-Los usos de las terminales son una asignación inicial propuesta, no una restricción de permisos. Se asume una tienda, LAN privada disponible y T01 encendida durante la operación. Sin internet, la operación interna deberá continuar; sin conexión al servicio, una terminal conservará borradores y suspenderá confirmaciones. El detalle de instalación y recuperación se mantiene en las secciones 6 y 8 del SAD.
-
-### 2.3 Descomposición objetivo
-
-| Capa propuesta | Responsabilidad | Contrato y restricción |
-| --- | --- | --- |
-| Presentación | Vistas Tkinter, presentadores, formularios, carrito y mensajes. | Invoca casos de uso mediante el cliente de API; no ejecuta SQL. |
-| Aplicación | Autenticación, autorización y coordinación de operaciones. | Establece una unidad de trabajo por modificación de negocio. |
-| Dominio | Reglas de inventario, promociones, importes y reposiciones. | No depende de Tkinter, HTTP ni archivos SQLite. |
-| Infraestructura | API, cliente de red, repositorios SQLite, imágenes, reloj y respaldo. | Implementa contratos de persistencia y comunicación. |
-
-Se propone la organización `ui/`, `application/`, `domain/` e `infrastructure/` ya definida en el SAD. Esta estructura no existe todavía en el repositorio.
+Con `python main.py` abrimos la aplicación local. Con `python main.py --servidor` atendemos también a las terminales remotas. En cada una de ellas ejecutamos `python main.py --terminal http://IP:8765`, sustituyendo IP por la dirección de la principal. Concentramos las operaciones administrativas en la principal.
 
 ## 3. Diseño de módulos y clases
 
-### 3.1 Inventario de componentes actuales
+### 3.1 Componentes
 
-| ID | Componente y ubicación | Responsabilidades y dependencias |
-| --- | --- | --- |
-| MOD-01 | `App` en `mis_trapitos_app_v7.py` | Hereda de `tk.Tk`; administra ventana, usuario, carrito, pestañas y manejadores. Usa `Database`, `ProductosUI`, `ttk`, diálogos, CSV y utilidades. |
-| MOD-02 | `Database` en `mis_trapitos_app_v7.py` | Mantiene `path` y `conn`; esquema, migración, autenticación, CRUD, reglas de venta, reposiciones y consultas de reportes. Depende de `sqlite3` y utilidades temporales y de contraseña. |
-| MOD-03 | `ProductosUI` en `ui_productos.py` | Hereda de `ttk.Frame`; construye formulario y tabla, valida productos, administra imágenes y exporta inventario. Recibe `db`; no abre otra conexión. |
-| MOD-04 | Constantes y funciones de `mis_trapitos_app_v7.py` | `TRACEABILITY`, `REPORTS`, `PAYMENT_METHODS`, `CONFIG_ITEMS`, `now_text`, `today_text`, `date_offset`, `hash_password` y `money`. |
-| MOD-05 | `tests/test_ui_productos.py` | Pruebas con widgets reales, ventanas ocultas y bases temporales; sustituye `seed_examples` y diálogos durante cada prueba. |
+| Componente | Implementación y responsabilidad |
+| --- | --- |
+| MOD-01 | `ui/app.py` monta las pantallas. `ui/base.py` comparte formularios, tablas y desplazamiento. `ui/styles.py` configura los estilos. |
+| MOD-02 | `data/database.py` abre SQLite y controla las transacciones. `schema.py` crea y migra la base. `seed.py` carga ejemplos bajo petición. Los repositorios contienen las consultas de cada entidad. |
+| MOD-03 | `ui/productos.py` captura variantes, muestra sus existencias y exporta el inventario. `data/product_images.py` conserva las fotos. |
+| MOD-04 | `config.py` fija versión, formatos y medios de pago. `utils.py` concentra fecha, importes y contraseñas. `ui/rastreabilidad.py` conserva el catálogo RF/RNF. |
+| MOD-05 | `tests/` contiene casos identificados con `@tc` y fichas en el docstring. Usamos bases temporales y widgets reales para ejercitar la interfaz. |
+| Servicios y LAN | `services/ventas.py`, `devoluciones.py` y `empleados.py` aplican reglas compartidas. `lan/servidor.py` ejecuta las solicitudes que envía `lan/cliente.py`. |
 
-### 3.2 Diagrama de clases implementadas
-
-**Figura D-03. Clases reales y operaciones representativas.** La asociación `db` de ambas clases de interfaz apunta al mismo objeto.
+### 3.2 Diagrama de clases
 
 ```mermaid
 classDiagram
-    class Tk
-    class Frame
-    class App {
-        user
-        cart
-        db
-        productos_ui
-        show_login()
-        login()
-        show_main()
-        register_sale_ui()
-        return_item_ui()
-        cancel_sale_ui()
-        refresh_products()
-        run_report()
-        on_close()
-    }
-    class Database {
-        path
-        conn
-        create_schema()
-        migrate_schema()
-        authenticate(username, password)
-        save_product(product_id, data)
-        register_sale()
-        return_item(sale_id, product_id, quantity, reason)
-        cancel_sale(sale_id, reason)
-        report(name, param)
-    }
-    class ProductosUI {
-        db
-        selected_product_id
-        product_photo_ref
-        _loaded_stock
-        collect_product_data()
-        add_product_ui()
-        edit_product_ui()
-        actualizar_inventario()
-        load_product_selected(event)
-        export_inventory_csv()
-    }
-    Tk <|-- App
-    Frame <|-- ProductosUI
-    App "1" *-- "1" Database : crea y cierra
-    App "1" *-- "0..1" ProductosUI : recrea al abrir sesión
-    ProductosUI --> Database : db compartida
+direction TB
+App --> Database
+App --> VentasUI
+App --> ProductosUI
+VentasUI --> ServicioVentas
+ServicioVentas --> Database
+ProductosUI --> Database
+TerminalLAN --> CarritoLAN
+TerminalLAN --> ClienteLAN
+CarritoLAN --> ClienteLAN
+ClienteLAN ..> ServidorLAN : HTTP
+ServidorLAN --> Database
 ```
 
-`Tk` y `Frame` representan `tk.Tk` y `ttk.Frame`. La firma de `register_sale` se abrevia para facilitar la lectura; sus parámetros completos figuran en 3.3. Durante el login no hay instancia activa de `ProductosUI`. `clear_window()` destruye widgets y elimina su referencia; `show_main()` vuelve a crearla. `on_close()` cierra la conexión y destruye la ventana.
+### 3.3 Contratos
 
-### 3.3 Contratos de persistencia actuales
+En estas firmas, `db` es la conexión de trabajo. Los nombres `ventas_srv` y `devoluciones_srv` designan módulos de servicios. La capa que inicia la transacción decide cuándo confirmar todas las escrituras.
 
-| Operación de `Database` | Entrada | Salida / efecto |
-| --- | --- | --- |
-| `execute(sql, params=())` | SQL y parámetros. | Cursor; usa `with self.conn` para confirmar o revertir la escritura. |
-| `query` / `one` / `scalar` | SQL y parámetros. | Lista de `sqlite3.Row`, fila o `None`, primer valor o `None`, respectivamente. |
-| `authenticate(username, password)` | Texto de usuario y contraseña. | Fila de `employees` coincidente o `None`. |
-| `save_supplier(supplier_id, data)` | ID opcional; nombre, teléfono, dirección, productos suministrados y fecha de último pedido. | ID insertado o actualizado. |
-| `save_employee(employee_id, name, username, password, role)` | ID opcional y datos del empleado. | ID; contraseña vacía en edición conserva el hash. En alta hay contraseña predeterminada si se omite. |
-| `save_customer(customer_id, data)` | ID opcional; nombre, teléfono, correo, dirección, región y preferencias. | ID insertado o actualizado. |
-| `save_product(product_id, data)` | ID opcional y tupla de 13 valores descrita abajo. | ID; inserta o actualiza producto y, según corresponda, registra movimiento. |
-| `save_promotion(promotion_id, product_id, discount_percent, start_date, end_date)` | ID opcional, producto, porcentaje y fechas. | ID insertado o actualizado. |
-| `active_promotion_percent(product_id)` | ID de producto. | Mayor porcentaje vigente; cero si no hay promoción aplicable. |
-| `register_sale(customer_id, employee_id, payment_method, sale_discount_percent, cart)` | Cliente opcional, empleado, pago, descuento y lista de diccionarios con `product_id` y `quantity`. | `(sale_id, subtotal, discount_amount, total)`. |
-| `return_item(sale_id, product_id, quantity, reason)` | Venta, producto, cantidad y motivo. | Sin retorno explícito; registra devolución, repone stock y movimiento. |
-| `cancel_sale(sale_id, reason)` | Venta y motivo. | Sin retorno explícito; repone remanente, cambia estado y registra cancelación. |
-| `customer_history(customer_id)` | ID de cliente. | Filas con venta, fecha, código, producto, cantidad, importes y estado. |
-| `report(name, param="")` | Nombre exacto de `REPORTS` y parámetro textual. | Filas con columnas según reporte; `ValueError` si no reconoce nombre o falta un parámetro exigido. |
+| Firma | Resultado y condiciones |
+| --- | --- |
+| `empleados_repo.autenticar(db, username, password)` | Devuelve la fila del empleado o `None`. Un acceso válido actualiza un hash heredado. |
+| `productos_repo.guardar(db, product_id, data)` | Devuelve el ID creado o editado. Recibe los dos precios en pesos, los convierte a centavos y registra el cambio de existencias. |
+| `ventas_srv.registrar(db, customer_id, employee_id, metodo_pago, descuento, cart)` | Devuelve `(sale_id, subtotal, monto, total)`. Los últimos tres enteros son centavos. `descuento` de entrada es un porcentaje. Rechaza carrito vacío, pago inválido, cantidad no positiva o stock insuficiente. |
+| `ServicioVentas.registrar_venta(self, customer_id, employee_id, metodo_pago, descuento=0)` | Valida al cliente opcional, llama a `registrar`, vacía el carrito al confirmar y devuelve `ResultadoVenta` con ID, fecha, subtotal, descuento, total y método. |
+| `devoluciones_srv.devolver(db, sale_id, product_id, quantity, reason)` | Rechaza una venta cancelada o una cantidad fuera del saldo. Repone piezas, registra la devolución y devuelve `None`. |
+| `devoluciones_srv.cancelar_venta(db, sale_id, reason)` | Agrupa partidas por producto, repone el remanente y marca la venta cancelada. Devuelve `None`. |
+| `reportes_repo.ejecutar(db, name, param="")` | Selecciona la consulta por nombre. Los resultados tabulares alimentan la vista y su CSV. |
 
-La tupla de producto conserva el orden: `code`, `name`, `category`, `size`, `color`, `purchase_price`, `sale_price`, `stock`, `supplier_id`, `entry_date`, `brand`, `season`, `image_path`. Los métodos actuales no constituyen una API remota. La validación de formulario y las restricciones SQL se distribuyen entre capas y no son equivalentes a una validación completa de dominio.
+### 3.4 Colaboración entre componentes
 
-### 3.4 Componentes objetivo y colaboración
-
-| Componente propuesto | Operaciones y responsabilidad | Evolución desde el código |
-| --- | --- | --- |
-| Presentadores por flujo | Cargar, validar formato, enviar comando y aplicar respuesta. | Extraer coordinación de `App` y `ProductosUI`. |
-| `CatalogoService` / `InventarioService` | Guardar producto, consultar existencias y ajustar stock con versión esperada. | Separar `save_product`, validaciones y movimientos. |
-| `VentaService` | Cotizar, registrar venta, devolver y cancelar. | Extraer reglas de `register_sale`, `return_item` y `cancel_sale`. |
-| `ClienteService` / `UsuarioService` | Clientes, sesión y permisos. | Separar persistencia de clientes y empleados de autenticación/autorización. |
-| `ReporteService` | Validar filtros y producir resultados acotados con columnas declaradas. | Sustituir selección textual dispersa por catálogo de reportes con identificadores estables. |
-| Repositorios y unidad de trabajo | Leer y escribir entidades dentro de la transacción del caso de uso. | Extraer SQL de `Database` y de las vistas; eliminar confirmaciones internas de repositorios. |
-| Adaptadores | API y cliente LAN, archivos, reloj, registros y respaldo. | Incorporar infraestructura todavía ausente. |
+Para guardar un proveedor, la pantalla Contactos llama al repositorio. Para administrar empleados, esa misma pantalla pasa por el servicio que relee el rol del usuario. En una venta, el servicio necesita varios repositorios porque cambia cabecera, detalle e inventario juntos.
 
 ## 4. Diseño de interfaces Tkinter
 
-### 4.1 Estructura y navegación
-
-La ventana inicial se configura a 1280 × 780, con mínimo de 1120 × 680. El login precede al `ttk.Notebook`; este contiene nueve pestañas. Las tablas usan `ttk.Treeview`, encabezados y barras de desplazamiento; los formularios usan principalmente `ttk.Entry`, `ttk.Button` y `ttk.LabelFrame`. Los errores de los manejadores principales se muestran mediante `messagebox`.
-
-| ID | Vista y constructor | Controles / acciones | Estado y validaciones actuales |
-| --- | --- | --- | --- |
-| UI-01 | Acceso: `show_login` | Usuario, contraseña enmascarada, Entrar y tecla Enter. | `login()` recorta textos y consulta `authenticate`; credenciales incorrectas muestran error. La pantalla contiene credenciales de demostración. |
-| UI-02 | Productos: `ProductosUI._build_widgets` | Código, nombre, categoría, talla, color, precios, stock, proveedor, fecha, marca, temporada y foto; agregar, editar, limpiar, visualizar y exportar. | Cinco textos obligatorios, números convertibles, precios/stock no negativos y proveedor existente si se indica. Edición exige selección. Código único por SQLite. |
-| UI-03 | Ventas: `make_sales_tab` | Cliente opcional, empleado de sesión, pago de lista cerrada, descuento, código, cantidad, carrito y ticket. | Cantidad positiva y stock al agregar; consolida entradas repetidas del mismo producto. La confirmación vuelve a validar mediante `register_sale`. |
-| UI-04 | Clientes: `make_customers_tab` | Datos de contacto, región y preferencias; guardar, limpiar, historial y correo. | Nombre obligatorio. Selección carga registro. Historial y correo requieren cliente seleccionado; no hay validación integral de formato de correo. |
-| UI-05 | Proveedores: `make_suppliers_tab` | Nombre, teléfono, dirección, suministros y último pedido; guardar y limpiar. | Nombre obligatorio y único por SQLite; fecha vacía usa fecha actual. |
-| UI-06 | Empleados: `make_employees_tab` | Nombre, usuario, contraseña y rol; guardar y limpiar. | Nombre y usuario obligatorios. Usuario único; contraseña vacía al editar conserva la anterior. El campo rol no implica autorización por operación. |
-| UI-07 | Promociones: `make_promotions_tab` | Producto, porcentaje, inicio y fin; guardar y limpiar. | Producto existente y porcentaje entre 0 y 100. No valida orden ni formato completo de fechas antes de guardar. |
-| UI-08 | Devoluciones y cancelaciones: `make_returns_tab` | Venta, producto, cantidad y motivo para devolución; venta y motivo para cancelación; dos tablas. | Conversión de IDs/cantidad; las reglas de reposición se delegan en `Database`. |
-| UI-09 | Reportes: `make_reports_tab` | Selector de 24 reportes, parámetro, ejecutar y exportar CSV. | Columnas dinámicas, mensaje «Sin resultados» y almacenamiento en `last_report_rows`. |
-| UI-10 | Rastreabilidad: `make_traceability_tab` | Tablas de configuración y requisitos; prueba básica del prototipo. | Visualiza constantes; `run_basic_tests` puede registrar una venta en la base abierta. |
-
-### 4.2 Estado de productos y actualización de inventario
-
-`selected_product_id` identifica el registro editado; `_loaded_stock` conserva la última existencia cargada; `product_photo_ref` mantiene la referencia de imagen de Tkinter. La selección `<<TreeviewSelect>>` llama a `load_product_selected` y carga los campos del registro.
-
-`actualizar_inventario()` consulta productos y proveedor, actualiza filas usando el ID como identificador del `Treeview` y elimina filas obsoletas. Si cambia el stock del producto seleccionado, sustituye únicamente ese campo del formulario y conserva las demás ediciones pendientes. Si el producto seleccionado ya no aparece, limpia el formulario. El refresco no constituye control de concurrencia entre equipos.
-
-Después de una venta, devolución o cancelación exitosa, `App.refresh_products()` delega en esta operación. No hay sondeo LAN ni notificación a otras instancias. `clear_product_form()` elimina selección, restablece fecha y coloca proveedor `1`; ese valor solo es válido si el proveedor existe.
-
-### 4.3 Estados objetivo de una operación remota
-
-| Estado | Presentación requerida | Acción habilitada |
-| --- | --- | --- |
-| Edición | Datos y estimación vigentes o aviso de antigüedad. | Modificar borrador; solicitar confirmación con conexión. |
-| En curso | Indicador de operación y prevención de doble envío desde la pantalla. | Esperar resultado; la UI conserva capacidad de repintado. |
-| Confirmada | ID, importes y stock devueltos por el servicio. | Emitir comprobante local e iniciar otra operación. |
-| Rechazada | Error de validación, stock, versión o permisos. | Corregir según el error; no anunciar confirmación. |
-| Pendiente de comprobar | Respuesta perdida y clave de solicitud conservada. | Consultar o reenviar la misma solicitud conforme a la sección 7. |
-| Sin conexión | Aviso visible y datos en caché identificados como desactualizados. | Conservar borrador; suspender escrituras. |
-
-La red y las operaciones prolongadas deberán ejecutarse fuera de los manejadores de eventos; los resultados llegarán a los widgets mediante una cola y `after()` en el hilo de interfaz. Esta decisión responde al modelo de eventos de Tkinter. [Modelo de hilos de Tkinter](https://docs.python.org/3/library/tkinter.html#threading-model).
+| Vista | Clase y recorrido |
+| --- | --- |
+| UI-01 · Login | `Login` entrega usuario y contraseña a la función de autenticación y abre la sesión cuando recibe un empleado válido. |
+| UI-02 · Productos | `ProductosUI` captura código, talla, color, precios y existencias. Permite editar la selección, adjuntar foto y exportar CSV. |
+| UI-03 · Ventas | `VentasUI` agrega por código, consolida cantidades y muestra el ticket. Acepta efectivo, tarjetas de crédito y débito o transferencia bancaria. |
+| UI-04 · Clientes | `ContactosUI` guarda datos de contacto, región y preferencias. Desde una selección consultamos el historial y preparamos el texto de un correo. |
+| UI-05 · Proveedores | `ContactosUI` registra contacto, productos suministrados y fecha del último pedido. Un producto puede quedar sin proveedor. |
+| UI-06 · Empleados | `ContactosUI` comprueba el permiso de administración. Al editar, una contraseña vacía conserva la existente. |
+| UI-07 · Promociones | `PromocionesUI` valida producto, porcentaje y fechas. En la venta aplicamos el mayor porcentaje vigente. |
+| UI-08 · Devoluciones | `DevolucionesUI` recibe venta, producto, cantidad y motivo. La cancelación actúa sobre la venta completa. |
+| UI-09 · Reportes | `ReportesUI` ejecuta la consulta seleccionada, admite parámetros y exporta filas. El menú ofrece 24 consultas, incluidas las doce de RF-15 a RF-26. |
+| UI-10 · Rastreabilidad | `RastreabilidadUI` muestra requisitos y configuración. Su prueba básica puede registrar una venta en la base abierta. |
+| Terminal LAN | `TerminalLAN` reutiliza el login, muestra inventario y permite vender con `CarritoLAN`. Actualiza el stock al recibir la confirmación y vuelve a consultar por sondeo. |
 
 ## 5. Diseño de datos
 
-### 5.1 Criterios del modelo actual
+### 5.1 Modelo relacional
 
-El esquema declarado en `Database.create_schema` contiene diez tablas de negocio. Todos los identificadores `id` son `INTEGER PRIMARY KEY AUTOINCREMENT`. Las fechas se almacenan como `TEXT`, los importes y porcentajes como `REAL`, y las cantidades como `INTEGER`. El diccionario registra las restricciones declaradas; no afirma que SQLite aplique tipado estricto. Además, el servicio LAN (#56) agrega la tabla técnica `lan_requests` (`request_key` TEXT PK, `fingerprint` TEXT, `sale_id` FK a `sales`, `employee_id`, `created_at`), que guarda la clave de idempotencia de cada venta remota junto con la venta en la misma transacción; no forma parte del modelo de negocio.
-
-Cada fila de `products` representa una variante comercial. No existen tablas independientes para producto base, talla, color, categoría, rol o método de pago. `suppliers.products_supplied` es texto descriptivo; la relación efectiva con productos reside en `products.supplier_id`. Las imágenes se referencian mediante `image_path`, no mediante BLOB.
-
-### 5.2 Modelo entidad–relación
-
-**Figura D-04. Relaciones declaradas en el esquema actual.** Una FK nullable permite cero o un padre; cada padre puede tener cero o muchos registros hijos. El diagrama refleja las restricciones SQL, no reglas adicionales de la aplicación.
+Distinguimos la variante (`products`) de la partida vendida (`sale_items`). Conservamos en la partida el precio unitario y la promoción de la operación. Un movimiento guarda la cantidad con signo y puede referirse a una venta. Las relaciones de la figura corresponden a claves foráneas declaradas.
 
 ```mermaid
+---
+config:
+  er:
+    nodeSpacing: 12
+    rankSpacing: 56
+    minEntityWidth: 50
+    minEntityHeight: 30
+    entityPadding: 7
+---
 erDiagram
+    direction LR
     suppliers |o--o{ products : suministra
-    products ||--o{ promotions : recibe
-    customers |o--o{ sales : realiza
+    customers |o--o{ sales : compra
     employees ||--o{ sales : registra
+    products ||--o{ promotions : recibe
     sales ||--o{ sale_items : contiene
-    products ||--o{ sale_items : integra
-    products ||--o{ inventory_movements : registra
-    sales |o--o{ inventory_movements : origina
-    sales ||--o{ returns : recibe
+    products ||--o{ sale_items : identifica
+    products ||--o{ inventory_movements : cambia
+    sales |o--o{ inventory_movements : motiva
+    sales ||--o{ returns : origina
     products ||--o{ returns : repone
     sales ||--o{ cancellations : registra
+    sales ||--o{ lan_requests : confirma
 ```
 
-La aplicación intenta impedir más de una cancelación por venta, pero no existe `UNIQUE(sale_id)` en `cancellations`; por ello la cardinalidad física es 0..N. Tampoco hay FK compuesta que vincule una devolución con un detalle vendido: esa validación se realiza en código.
+### 5.2 Diccionario de datos
 
-### 5.3 Diccionario de datos
+Agrupamos las columnas de cada tabla por tipo declarado y condición. PK identifica la clave primaria y FK indica su destino. Los importes son centavos y los porcentajes conservan tipo REAL. Las fechas se guardan como TEXT.
 
-En las tablas siguientes, «opcional» significa que la columna admite `NULL`; no equivale a validar contenido vacío. Las claves primarias se generan automáticamente. Salvo los valores predeterminados indicados, los campos no tienen `DEFAULT` explícito.
-
-#### 5.3.1 `suppliers` — Proveedores
-
-| Campo | Tipo | Restricciones declaradas | Descripción |
-| --- | --- | --- | --- |
-| `id` | `INTEGER` | PK; autoincremental | Identificador del registro. |
-| `name` | `TEXT` | NN; UQ | Nombre descriptivo. |
-| `phone` | `TEXT` | Opcional | Teléfono de contacto. |
-| `address` | `TEXT` | Opcional | Dirección de contacto. |
-| `products_supplied` | `TEXT` | Opcional | Descripción libre de suministros; no es una relación adicional. |
-| `last_order_date` | `TEXT` | Opcional | Fecha textual del último pedido. |
-| `created_at` | `TEXT` | NN | Fecha y hora de creación. |
-
-#### 5.3.2 `employees` — Empleados
-
-| Campo | Tipo | Restricciones declaradas | Descripción |
-| --- | --- | --- | --- |
-| `id` | `INTEGER` | PK; autoincremental | Identificador del registro. |
-| `name` | `TEXT` | NN | Nombre descriptivo. |
-| `username` | `TEXT` | NN; UQ | Nombre de acceso. |
-| `password_hash` | `TEXT` | NN | Hash de contraseña calculado por la aplicación. |
-| `role` | `TEXT` | NN | Rol textual del empleado. |
-| `created_at` | `TEXT` | NN | Fecha y hora de creación. |
-
-#### 5.3.3 `customers` — Clientes
-
-| Campo | Tipo | Restricciones declaradas | Descripción |
-| --- | --- | --- | --- |
-| `id` | `INTEGER` | PK; autoincremental | Identificador del registro. |
-| `name` | `TEXT` | NN | Nombre descriptivo. |
-| `phone` | `TEXT` | Opcional | Teléfono de contacto. |
-| `email` | `TEXT` | Opcional | Correo de contacto. |
-| `address` | `TEXT` | Opcional | Dirección de contacto. |
-| `city_region` | `TEXT` | Opcional | Ciudad o región del cliente. |
-| `preferences` | `TEXT` | Opcional | Preferencias declaradas del cliente. |
-| `created_at` | `TEXT` | NN | Fecha y hora de creación. |
-
-#### 5.3.4 `products` — Productos y variantes
-
-| Campo | Tipo | Restricciones declaradas | Descripción |
-| --- | --- | --- | --- |
-| `id` | `INTEGER` | PK; autoincremental | Identificador del registro. |
-| `code` | `TEXT` | NN; UQ | Código único de la variante. |
-| `name` | `TEXT` | NN | Nombre descriptivo. |
-| `category` | `TEXT` | NN | Categoría textual del producto. |
-| `size` | `TEXT` | NN | Talla de la variante. |
-| `color` | `TEXT` | NN | Color de la variante. |
-| `purchase_price` | `REAL` | NN; `CHECK(purchase_price >= 0)` | Precio de compra actual. |
-| `sale_price` | `REAL` | NN; `CHECK(sale_price >= 0)` | Precio de venta actual. |
-| `stock` | `INTEGER` | NN; `CHECK(stock >= 0)` | Existencias actuales de la variante. |
-| `supplier_id` | `INTEGER` | Opcional; FK → `suppliers.id` | Proveedor opcional asociado. |
-| `entry_date` | `TEXT` | NN | Fecha de ingreso. |
-| `brand` | `TEXT` | Opcional | Marca. |
-| `season` | `TEXT` | Opcional | Temporada. |
-| `image_path` | `TEXT` | Opcional | Ruta textual de la imagen local. |
-| `created_at` | `TEXT` | NN | Fecha y hora de creación. |
-
-#### 5.3.5 `promotions` — Promociones
-
-| Campo | Tipo | Restricciones declaradas | Descripción |
-| --- | --- | --- | --- |
-| `id` | `INTEGER` | PK; autoincremental | Identificador del registro. |
-| `product_id` | `INTEGER` | NN; FK → `products.id` | Producto o variante asociado. |
-| `discount_percent` | `REAL` | NN; `CHECK(discount_percent >= 0 AND discount_percent <= 100)` | Porcentaje de promoción. |
-| `start_date` | `TEXT` | NN | Primer día de vigencia. |
-| `end_date` | `TEXT` | NN | Último día de vigencia. |
-| `created_at` | `TEXT` | NN | Fecha y hora de creación. |
-
-#### 5.3.6 `sales` — Ventas
-
-| Campo | Tipo | Restricciones declaradas | Descripción |
-| --- | --- | --- | --- |
-| `id` | `INTEGER` | PK; autoincremental | Identificador del registro. |
-| `sale_datetime` | `TEXT` | NN | Fecha y hora de venta. |
-| `customer_id` | `INTEGER` | Opcional; FK → `customers.id` | Cliente opcional de la venta. |
-| `employee_id` | `INTEGER` | NN; FK → `employees.id` | Empleado que registra la venta. |
-| `payment_method` | `TEXT` | NN | Método de pago registrado. |
-| `subtotal` | `REAL` | NN | Suma de líneas después de promociones. |
-| `sale_discount_percent` | `REAL` | NN; DEFAULT `0` | Porcentaje de descuento general. |
-| `discount_amount` | `REAL` | NN | Importe del descuento general. |
-| `total` | `REAL` | NN | Importe final registrado. |
-| `status` | `TEXT` | NN; DEFAULT `'ACTIVA'` | Estado de la venta; la aplicación usa ACTIVA y CANCELADA. |
-
-#### 5.3.7 `sale_items` — Detalles de venta
-
-| Campo | Tipo | Restricciones declaradas | Descripción |
-| --- | --- | --- | --- |
-| `id` | `INTEGER` | PK; autoincremental | Identificador del registro. |
-| `sale_id` | `INTEGER` | NN; FK → `sales.id` | Venta asociada. |
-| `product_id` | `INTEGER` | NN; FK → `products.id` | Producto o variante asociado. |
-| `quantity` | `INTEGER` | NN; `CHECK(quantity > 0)` | Cantidad de unidades. |
-| `unit_price` | `REAL` | NN | Precio unitario conservado al vender. |
-| `promo_discount_percent` | `REAL` | NN; DEFAULT `0` | Promoción aplicada a la línea. |
-| `line_total` | `REAL` | NN | Total de línea con promoción, antes del descuento general. |
-
-#### 5.3.8 `inventory_movements` — Movimientos de inventario
-
-| Campo | Tipo | Restricciones declaradas | Descripción |
-| --- | --- | --- | --- |
-| `id` | `INTEGER` | PK; autoincremental | Identificador del registro. |
-| `product_id` | `INTEGER` | NN; FK → `products.id` | Producto o variante asociado. |
-| `movement_type` | `TEXT` | NN | Tipo textual de movimiento. |
-| `quantity` | `INTEGER` | NN | Variación con signo aplicada a existencias. |
-| `movement_datetime` | `TEXT` | NN | Fecha y hora del movimiento. |
-| `reason` | `TEXT` | NN | Motivo de la operación. |
-| `related_sale_id` | `INTEGER` | Opcional; FK → `sales.id` | Venta de origen opcional. |
-
-#### 5.3.9 `returns` — Devoluciones
-
-| Campo | Tipo | Restricciones declaradas | Descripción |
-| --- | --- | --- | --- |
-| `id` | `INTEGER` | PK; autoincremental | Identificador del registro. |
-| `sale_id` | `INTEGER` | NN; FK → `sales.id` | Venta asociada. |
-| `product_id` | `INTEGER` | NN; FK → `products.id` | Producto o variante asociado. |
-| `quantity` | `INTEGER` | NN; `CHECK(quantity > 0)` | Cantidad de unidades. |
-| `return_datetime` | `TEXT` | NN | Fecha y hora de devolución. |
-| `reason` | `TEXT` | Opcional | Motivo de la operación. |
-
-#### 5.3.10 `cancellations` — Cancelaciones
-
-| Campo | Tipo | Restricciones declaradas | Descripción |
-| --- | --- | --- | --- |
-| `id` | `INTEGER` | PK; autoincremental | Identificador del registro. |
-| `sale_id` | `INTEGER` | NN; FK → `sales.id` | Venta asociada. |
-| `cancel_datetime` | `TEXT` | NN | Fecha y hora de cancelación. |
-| `reason` | `TEXT` | Opcional | Motivo de la operación. |
-
-
-### 5.4 Integridad, índices y migración actual
-
-Se activa `PRAGMA foreign_keys=ON` en la conexión de `Database`. Las FK no declaran cascadas. Los códigos de producto, nombres de proveedor y nombres de usuario son únicos; no se declara unicidad conjunta de nombre, talla y color. El esquema no define índices de consulta adicionales a los asociados a claves y restricciones de unicidad.
-
-`migrate_schema()` inspecciona `suppliers` mediante `PRAGMA table_info` y agrega `products_supplied` y `last_order_date` si faltan. No existe registro de versión de esquema ni migración general. La existencia de `CHECK` sobre stock y cantidades no resuelve por sí sola las operaciones concurrentes.
-
-Los movimientos usan cantidades con signo: entrada inicial positiva o cero; ajuste como diferencia nueva menos anterior; salida de venta negativa; devolución y cancelación positivas. `movement_type`, `sales.status`, `payment_method` y `employees.role` son textos sin catálogo SQL cerrado.
-
-### 5.5 Evolución propuesta de persistencia
-
-| Elemento | Diseño objetivo | Condición de implementación |
+| Tabla | Tipo y condición | Columnas |
 | --- | --- | --- |
-| Importes | Centavos enteros; cálculo con `Decimal` y redondeo explícito por línea y descuento general. | Acordar regla de redondeo y moneda; convertir históricos con comprobaciones de conciliación. |
-| Costo histórico | Guardar costo unitario en cada detalle de venta. | Los reportes históricos no deberán cambiar al editar el costo del producto. |
-| Versión de producto | Contador incrementado en cada modificación; edición con versión esperada. | Rechazar escritura desactualizada y separar ajuste de stock de edición de atributos. |
-| Solicitudes | Clave única, usuario, terminal, huella de contenido y resultado confirmado. | Registrar junto con efectos de negocio en la misma transacción; no confirmar registro aislado. |
-| Auditoría | Usuario, terminal, operación, entidad, fecha de servicio y resultado. | Evitar contraseñas y tokens en registros. |
-| Versión del esquema | Migraciones identificadas y verificables. | Copia previa, comprobación de integridad y compatibilidad de cliente/API. |
-| Consultas | Evaluar índices en FK y filtros temporales frecuentes. | Justificar índices mediante consultas y mediciones representativas. |
+| cancellations | INTEGER · PK | id |
+| cancellations | INTEGER · obligatorio | sale_id → sales.id |
+| cancellations | TEXT · obligatorio | cancel_datetime |
+| cancellations | TEXT · opcional | reason |
+| customers | INTEGER · PK | id |
+| customers | TEXT · obligatorio | name, created_at |
+| customers | TEXT · opcional | phone, email, address, city_region, preferences |
+| employees | INTEGER · PK | id |
+| employees | TEXT · obligatorio | name, username (único), password_hash, role, created_at |
+| inventory_movements | INTEGER · PK | id |
+| inventory_movements | INTEGER · obligatorio | product_id → products.id, quantity |
+| inventory_movements | TEXT · obligatorio | movement_type, movement_datetime, reason |
+| inventory_movements | INTEGER · opcional | related_sale_id → sales.id |
+| lan_requests | TEXT · PK | request_key |
+| lan_requests | TEXT · obligatorio | fingerprint, created_at |
+| lan_requests | INTEGER · obligatorio | sale_id → sales.id, employee_id |
+| products | INTEGER · PK | id |
+| products | TEXT · obligatorio | code (único), name, category, size, color, entry_date, created_at |
+| products | INTEGER · obligatorio | purchase_price (≥ 0), sale_price (≥ 0), stock (≥ 0) |
+| products | INTEGER · opcional | supplier_id → suppliers.id |
+| products | TEXT · opcional | brand, season, image_path |
+| promotions | INTEGER · PK | id |
+| promotions | INTEGER · obligatorio | product_id → products.id |
+| promotions | REAL · obligatorio | discount_percent (0 a 100) |
+| promotions | TEXT · obligatorio | start_date, end_date, created_at |
+| returns | INTEGER · PK | id |
+| returns | INTEGER · obligatorio | sale_id → sales.id, product_id → products.id, quantity (> 0) |
+| returns | TEXT · obligatorio | return_datetime |
+| returns | TEXT · opcional | reason |
+| sale_items | INTEGER · PK | id |
+| sale_items | INTEGER · obligatorio | sale_id → sales.id, product_id → products.id, quantity (> 0), unit_price, line_total |
+| sale_items | REAL · obligatorio | promo_discount_percent (por defecto 0) |
+| sales | INTEGER · PK | id |
+| sales | TEXT · obligatorio | sale_datetime, payment_method, status (por defecto 'ACTIVA') |
+| sales | INTEGER · opcional | customer_id → customers.id |
+| sales | INTEGER · obligatorio | employee_id → employees.id, subtotal, discount_amount, total |
+| sales | REAL · obligatorio | sale_discount_percent (por defecto 0) |
+| suppliers | INTEGER · PK | id |
+| suppliers | TEXT · obligatorio | name (único), created_at |
+| suppliers | TEXT · opcional | phone, address, products_supplied, last_order_date |
 
-Los nombres físicos y DDL de estas extensiones se definirán en la implementación correspondiente. No forman parte de las diez tablas actuales ni se aplican mediante este documento.
+### 5.3 Migraciones
+
+La migración 1 agrega a `suppliers` los campos de suministros y último pedido cuando faltan. La migración 2 reconstruye `products`, `sales` y `sale_items`. Multiplica por 100, redondea en SQL y convierte a INTEGER antes de sustituir las tablas. Conservamos los identificadores para que los detalles y movimientos sigan apuntando al mismo registro.
+
+Comparamos `PRAGMA user_version` con el registro `MIGRACIONES`. Rechazamos una versión superior a la conocida. Para las pendientes, desactivamos temporalmente las FK, abrimos `BEGIN IMMEDIATE`, cambiamos la versión por paso y comprobamos `foreign_key_check` antes del commit. Un error revierte la transacción. Al salir, reactivamos las FK.
 
 ## 6. Operaciones y diagramas de secuencia
 
-### 6.1 OP-01 — Autenticación actual
+### 6.1 OP-01 · Autenticación
 
-La contraseña se transforma con SHA-256 y se compara con `employees.password_hash`. Una coincidencia carga la fila en `App.user` y abre las pestañas. No se implementan sesiones remotas, expiración ni autorización efectiva por operación. El botón Salir regresa al login; no representa un protocolo de revocación de sesión.
+`Login.submit` llama a la función de acceso que recibió al construirse. En la principal consultamos `employees` por usuario, verificamos la contraseña y entregamos la fila a `App`. En la remota el servidor devuelve el token y los datos públicos del empleado.
 
-**Figura D-05. Secuencia de autenticación implementada.**
+### 6.2 OP-02 · Alta y edición de productos
 
-```mermaid
-sequenceDiagram
-    actor U as Usuario
-    participant A as App
-    participant D as Database
-    participant S as SQLite
-    U->>A: Introducir credenciales y entrar
-    A->>D: authenticate(username, password)
-    D->>D: hash_password(password)
-    D->>S: SELECT employees por usuario y hash
-    S-->>D: Fila o ausencia
-    D-->>A: Usuario o None
-    alt Credenciales válidas
-        A->>A: Asignar user y show_main()
-        A-->>U: Mostrar pestañas
-    else Credenciales incorrectas
-        A-->>U: Mostrar error de acceso
-    end
-```
+`productos.guardar` convierte los precios con `a_centavos` y normaliza la foto antes de abrir la transacción. El alta inserta la variante y su ENTRADA. Al editar comparamos el stock anterior con la captura y solo registramos un AJUSTE si cambió.
 
-### 6.2 OP-02 — Alta y edición de productos actuales
-
-El formulario verifica campos obligatorios, conversión de números, valores no negativos y proveedor existente. El ID opcional distingue alta y edición. El alta registra una `ENTRADA`; una modificación de stock registra un `AJUSTE` por la diferencia. La escritura del producto y su movimiento usan llamadas independientes a `execute`, por lo que no forman una única transacción atómica.
-
-**Figura D-06. Alta o edición implementada.** El fallo del segundo paso puede dejar persistido el primero.
+### 6.3 OP-03 · Registro de venta
 
 ```mermaid
 sequenceDiagram
-    actor U as Usuario
-    participant P as ProductosUI
-    participant D as Database
-    participant S as SQLite
-    U->>P: Agregar o editar producto
-    P->>P: collect_product_data()
-    opt Proveedor indicado
-        P->>D: Consultar proveedor
-        D->>S: SELECT suppliers
-        S-->>D: Resultado de consulta
-        D-->>P: Proveedor o ausencia
-    end
-    alt Validación inválida
-        P-->>U: Mostrar error
-    else Datos válidos
-        P->>D: save_product(id opcional, data)
-        opt Edición
-            D->>S: Consultar stock anterior
-        end
-        D->>S: INSERT o UPDATE products y confirmar
-        opt Alta o stock modificado
-            D->>S: INSERT inventory_movements y confirmar
-        end
-        D-->>P: product_id
-        P->>D: Consultar inventario actualizado
-        D-->>P: Filas actuales
-        P-->>U: Actualizar tabla y mostrar resultado
-    end
+participant UI as VentasUI
+participant C as ServicioVentas
+participant S as ventas.registrar
+participant D as Database
+UI->>C: registrar_venta(...)
+C->>S: registrar(..., cart)
+S->>D: transaction() / BEGIN IMMEDIATE
+S->>D: Leer precio, promoción y stock
+S->>D: Insertar cabecera y partidas vía repositorios
+S->>D: Ajustar stock e insertar SALIDA
+D-->>S: Commit al salir sin error
+S-->>C: sale_id, subtotal, monto, total
+C-->>UI: ResultadoVenta
 ```
 
-### 6.3 OP-03 — Registro de venta actual
+Redondeamos cada partida tras la promoción y después el descuento sobre el subtotal. En CTS_SDD_01, 60 000 centavos menos 6 000 dan 54 000. Si falla la inserción de una partida, la cabecera tampoco queda confirmada.
 
-Precondiciones: carrito no vacío, cantidades positivas, productos existentes, stock suficiente por línea, descuento general entre 0 y 100 y método incluido en `PAYMENT_METHODS`. El cliente es opcional y el empleado proviene de `App.user`; SQLite verifica sus FK.
+### 6.4 OP-04 · Devolución
 
-Para cada línea, `line_total = unit_price × quantity × (1 − promo / 100)`. Se elige la mayor promoción vigente, con extremos de fecha incluidos. El subtotal suma líneas promocionadas; `discount_amount = subtotal × sale_discount_percent / 100`; `total = subtotal − discount_amount`. Se emplean `float` y `REAL`; `money()` formatea para presentación y no define una política contable de redondeo persistido.
+Validamos que la venta siga activa y que la cantidad quepa en lo vendido menos lo devuelto. En una transacción insertamos la devolución, aumentamos el stock y anotamos un movimiento DEVOLUCION. La comprobación del saldo ocurre antes del bloqueo de escritura.
 
-Ejemplo ilustrativo: dos unidades a 100, promoción de 10 % y descuento general de 5 % producen subtotal 180, descuento general 9 y total 171. Los porcentajes se aplican sucesivamente.
+### 6.5 OP-05 · Cancelación
 
-**Figura D-07. Venta implementada y refresco local de productos.**
+Agrupamos las partidas aunque un mismo producto aparezca dos veces. Restamos lo devuelto, reponemos lo pendiente y registramos CANCELACION. En la misma transacción cambiamos el estado e insertamos el motivo. B-03 conserva el riesgo de dos solicitudes concurrentes.
 
-```mermaid
-sequenceDiagram
-    actor U as Usuario
-    participant A as App
-    participant D as Database
-    participant S as SQLite
-    participant P as ProductosUI
-    U->>A: Registrar venta
-    A->>D: register_sale(cliente, empleado, pago, descuento, carrito)
-    D->>D: Validar carrito, descuento y pago
-    loop Cada línea
-        D->>S: Consultar producto y promoción vigente
-        S-->>D: Datos actuales
-        D->>D: Validar cantidad y stock y calcular línea
-    end
-    alt Validación rechazada
-        D-->>A: Excepción
-        A-->>U: Mostrar error
-    else Validación aceptada
-        Note over D,S: Escrituras dentro de with self.conn
-        D->>S: INSERT sales
-        loop Cada línea preparada
-            D->>S: INSERT sale_items
-            D->>S: Descontar stock e insertar SALIDA
-        end
-        alt Escrituras correctas
-            D->>S: COMMIT al salir del contexto
-            D-->>A: ID e importes
-            A->>A: Mostrar ticket y vaciar carrito
-            A->>P: actualizar_inventario()
-            P->>D: Consultar productos
-            D-->>P: Inventario actual
-            A-->>U: Venta registrada
-        else Error en escrituras
-            D->>S: ROLLBACK al salir del contexto
-            D-->>A: Excepción
-            A-->>U: Mostrar error
-        end
-    end
-```
+### 6.6 OP-06 · Consultas, historial y exportación
 
-El contexto de conexión agrupa las escrituras, pero no inicia anticipadamente un bloqueo de escritura para las lecturas previas. No debe interpretarse como garantía de venta concurrente segura entre siete clientes. `App.add_cart_item` consolida productos repetidos; `Database.register_sale` no realiza esa consolidación para cualquier llamador. La condición SQL `stock >= 0` puede rechazar una escritura que agotaría existencias, sin sustituir una validación agregada del carrito.
-
-### 6.4 OP-04 — Devolución actual
-
-Se exige venta existente y no cancelada. La cantidad solicitada debe ser positiva y no superar la suma vendida del producto menos su suma devuelta. Se insertan devolución y movimiento, y se incrementa stock. El importe y el estado de la venta original no se modifican; no existe registro monetario de reembolso.
-
-**Figura D-08. Devolución implementada.**
-
-```mermaid
-sequenceDiagram
-    actor U as Usuario
-    participant A as App
-    participant D as Database
-    participant S as SQLite
-    U->>A: Registrar devolución
-    A->>D: return_item(venta, producto, cantidad, motivo)
-    D->>S: Consultar venta, cantidad vendida y devuelta
-    S-->>D: Estado y acumulados
-    alt Venta o cantidad inválida
-        D-->>A: ValueError
-        A-->>U: Mostrar error
-    else Devolución permitida
-        Note over D,S: Validación anterior al bloque de escritura
-        D->>S: INSERT returns, incrementar stock e INSERT DEVOLUCION
-        alt Escrituras correctas
-            D->>S: COMMIT
-            D-->>A: Finalización
-            A->>A: refresh_returns() y refresh_products()
-            A-->>U: Devolución registrada
-        else Error en escrituras
-            D->>S: ROLLBACK
-            D-->>A: Excepción para mostrar error
-        end
-    end
-```
-
-### 6.5 OP-05 — Cancelación actual
-
-Se exige venta existente y distinta de `CANCELADA`. Por cada detalle se calcula `max(0, cantidad_del_detalle − devoluciones_del_producto_en_la_venta)`. Si el remanente es positivo, se repone y registra `CANCELACION`; finalmente se cambia `sales.status` y se inserta `cancellations`, dentro del mismo bloque de escritura.
-
-Esta resta por detalle presupone una línea por producto. Si otro llamador crea varias líneas del mismo producto, las devoluciones agregadas podrían descontarse varias veces y producir una reposición insuficiente. El diseño objetivo deberá agregar cantidades por producto antes de calcular el remanente.
-
-**Figura D-09. Cancelación implementada.**
-
-```mermaid
-sequenceDiagram
-    actor U as Usuario
-    participant A as App
-    participant D as Database
-    participant S as SQLite
-    U->>A: Cancelar venta
-    A->>D: cancel_sale(venta, motivo)
-    D->>S: Consultar venta y detalles
-    S-->>D: Estado y líneas
-    alt Venta inexistente o cancelada
-        D-->>A: ValueError
-        A-->>U: Mostrar error
-    else Venta admitida
-        Note over D,S: Bloque with self.conn
-        loop Cada detalle
-            D->>S: Consultar devoluciones de ese producto y venta
-            D->>D: Calcular remanente del detalle
-            opt Remanente positivo
-                D->>S: Reponer stock e insertar CANCELACION
-            end
-        end
-        D->>S: Cambiar estado e insertar cancellations
-        alt Escrituras correctas
-            D->>S: COMMIT
-            D-->>A: Finalización
-            A->>A: Refrescar cancelaciones e inventario
-            A-->>U: Venta cancelada
-        else Error en escrituras
-            D->>S: ROLLBACK
-            D-->>A: Excepción para mostrar error
-        end
-    end
-```
-
-### 6.6 OP-06 — Consultas, historial y exportación
-
-`Database.report` despacha 24 nombres de reporte. Los parámetros corresponden a categoría, proveedor, cliente, precio o umbral de stock según la consulta. La UI muestra las columnas devueltas y conserva las filas para exportarlas. El inventario exportado consulta de nuevo el reporte general; la exportación de reportes usa el último resultado almacenado. Los CSV son UTF-8, con encabezados cuando hay filas; un resultado vacío genera un archivo sin encabezados.
-
-El historial muestra ventas y sus estados. Gran parte de los agregados considera solo ventas `ACTIVA`, pero las devoluciones no reducen automáticamente importes o cantidades en esos reportes. `Resumen de utilidades` usa el precio de compra actual de `products` y el total de línea anterior al descuento general; su resultado no equivale a una utilidad neta histórica conciliada.
-
-Se identifican diferencias que requieren validación funcional: «Ventas ultimos tres dias» filtra desde `date('now','-3 day')` inclusive y admite ventas canceladas; «Productos comprados mas de una vez por cliente» admite varias compras o más de una unidad; el reporte mensual por categoría contiene espacios antes de `-1 month` en el modificador SQL. Estas observaciones se registran en B-05 y no se corrigen mediante este cambio documental.
+`clientes.historial` recupera las ventas del cliente seleccionado. En reportes, `reportes.ejecutar` recibe nombre y parámetro. La UI presenta importes en pesos y permite exportar la tabla. En «Ventas por producto» descontamos las piezas devueltas. En «Resumen de utilidades» todavía calculamos el costo con el precio de compra actual del catálogo.
 
 ## 7. Diseño de comunicación y concurrencia
 
-Toda esta sección especifica componentes propuestos. Se conserva HTTPS con JSON, verificación de certificados y contratos versionados del SAD. No se selecciona un framework de servidor ni se afirma que existan rutas HTTP implementadas.
+### 7.1 Contrato HTTP
 
-### 7.1 Contratos lógicos propuestos
+Bajo `/api/v1`, `POST /sesion` autentica y entrega el token. `GET /inventario`, `POST /ventas` y `GET /ventas/<clave>` exigen sesión Bearer. El servidor identifica al empleado desde la sesión. La consulta de una clave exige que pertenezca a ese empleado.
 
-| Operación | Solicitud | Respuesta satisfactoria |
-| --- | --- | --- |
-| Iniciar sesión | Versión de contrato, terminal y credenciales. | Token de sesión, usuario, permisos, expiración y generación de recuperación. |
-| Consultar productos | Sesión, filtros y paginación. | Productos, precio, stock, versión de registro y momento de consulta. |
-| Guardar producto / ajustar stock | Sesión, clave de solicitud, datos y versión esperada en edición. | ID, nueva versión, stock y movimientos afectados. |
-| Registrar venta | Sesión, terminal, clave, cliente opcional, productos/cantidades, pago, descuento y condiciones mostradas aceptadas. | ID de venta, importes definitivos, stock afectado, versiones y generación de recuperación. |
-| Devolver / cancelar | Sesión, clave, venta, motivo y, para devolución, producto y cantidad. | Operación confirmada, estado de venta y stock afectado. |
-| Consultar resultado de solicitud | Sesión, clave y generación conocida. | Resultado confirmado, en proceso o no localizado; tratamiento especial después de recuperación. |
-| Consultar reporte | Sesión, identificador de reporte, filtros y paginación. | Esquema de columnas, filas y metadatos temporales. |
-
-La identidad del empleado se deriva de la sesión validada en el servicio. La terminal debe estar reconocida por configuración y asociada a la sesión; el cliente no elige libremente el empleado que se registra en una venta. La clave de idempotencia identifica una intención concreta y su contenido inmutable.
-
-| Código lógico propuesto | Significado y tratamiento |
-| --- | --- |
-| `VALIDATION_ERROR` | Datos inválidos; corregir antes de crear otra solicitud. |
-| `UNAUTHENTICATED` / `FORBIDDEN` | Sesión no válida o permiso insuficiente; no modificar datos. |
-| `NOT_FOUND` | Entidad inexistente; volver a consultar. |
-| `INSUFFICIENT_STOCK` | Cantidad no disponible; informar existencias vigentes. |
-| `VERSION_CONFLICT` / `PRICE_CHANGED` | Datos o condiciones desactualizados; recargar y obtener aceptación del cambio. |
-| `IDEMPOTENCY_CONFLICT` | Clave existente usada con otro contenido; rechazar. |
-| `BUSY` / `UNAVAILABLE` | Capacidad temporal agotada o servicio no disponible; comprobar resultado si hubo envío incierto. |
-| `RECOVERY_RECONCILIATION_REQUIRED` | Cambió la generación de recuperación; impedir reenvío automático hasta conciliación. |
-
-El error deberá incluir código estable, descripción legible, identificador de correlación y campos afectados cuando corresponda. No se expondrán trazas ni SQL a la pantalla. El mapeo a estados HTTP y los límites de tamaño y espera se fijarán con la implementación y sus pruebas.
-
-### 7.2 Unidad de trabajo y reglas de escritura
-
-El servicio dispondrá de un trabajador de escritura con conexión creada y utilizada en su propio hilo. Las consultas usarán conexiones de lectura propias; los repositorios no harán `commit` individual. La unidad de trabajo iniciará `BEGIN IMMEDIATE`, comprobará idempotencia, releerá datos, validará reglas y confirmará todos los efectos juntos. Un error deberá revertir también movimientos, auditoría transaccional y resultado de solicitud.
-
-Se consolidarán las cantidades por producto; el descuento de existencias se condicionará a stock suficiente y se verificará el número de filas afectadas. Devoluciones y cancelaciones validarán los acumulados dentro de la misma transacción de escritura. No se mantendrá una transacción abierta mientras se espera un diálogo, una respuesta de red o una operación de imagen.
-
-`BEGIN IMMEDIATE` puede fallar con `SQLITE_BUSY`, y WAL permite lectores simultáneos con un escritor, no varios escritores simultáneos. Se aplicarán cola y esperas acotadas; WAL, claves foráneas y durabilidad efectiva se verificarán al iniciar. [Transacciones SQLite](https://www.sqlite.org/lang_transaction.html), [WAL](https://www.sqlite.org/wal.html).
-
-### 7.3 OP-07 — Venta por LAN, diseño objetivo
-
-**Figura D-10. Confirmación centralizada, rechazo por stock y pérdida de respuesta.**
+### 7.2 OP-07 · Venta por LAN implementada
 
 ```mermaid
 sequenceDiagram
-    actor U as Usuario
-    participant C as Cliente Tkinter
-    participant A as API local
-    participant V as VentaService
-    participant S as SQLite en T01
-    U->>C: Confirmar condiciones mostradas
-    C->>C: Conservar solicitud y clave
-    C->>A: Registrar venta con sesión y clave
-    A->>A: Validar contrato, sesión y permiso
-    A->>V: Encolar comando autorizado
-    V->>S: BEGIN IMMEDIATE
-    V->>S: Consultar clave y huella
-    alt Clave ya confirmada con igual contenido
-        S-->>V: Resultado original
-        V->>S: Finalizar transacción sin repetir efectos
-        V-->>C: Devolver resultado mediante API
-    else Solicitud nueva
-        V->>S: Releer productos y promociones
-        V->>V: Consolidar y validar stock y condiciones
-        alt Stock insuficiente o condiciones cambiadas
-            V->>S: ROLLBACK
-            V-->>C: Rechazo definitivo mediante API
-            C-->>U: Mostrar causa y conservar borrador
-        else Condiciones válidas
-            V->>S: Venta, detalles, stock, movimientos, auditoría y resultado
-            V->>S: COMMIT
-            alt Respuesta recibida
-                V-->>C: Resultado definitivo mediante API
-                C-->>U: Comprobante y stock actualizado
-            else Respuesta perdida
-                C->>C: Marcar pendiente de comprobar
-                C->>A: Consultar misma clave al recuperar conexión
-                A->>S: Consultar resultado confirmado
-                S-->>A: Resultado original
-                A-->>C: Venta confirmada sin nueva escritura
-                C-->>U: Mostrar comprobante recuperado
-            end
-        end
-    end
+participant C as CarritoLAN
+participant H as ClienteLAN
+participant S as ServidorLAN
+participant D as SQLite
+C->>H: registrar_venta(clave, datos)
+H->>S: POST /api/v1/ventas con token
+S->>D: BEGIN IMMEDIATE y buscar clave
+alt Clave nueva
+S->>D: Registrar venta, SALIDA y lan_requests
+else Misma clave y huella
+S->>D: Consultar la venta confirmada
+end
+S-->>H: Resultado y stock actual por producto
+H-->>C: Actualizar stock y vaciar carrito
 ```
 
-La consulta de resultado del diagrama se ejecutará mediante el componente de lectura del servicio, aunque se abrevia su intermediación. Los rechazos de sesión, clave conflictiva, fallos SQL o cola saturada siguen los contratos de error de 7.1; los fallos antes de `COMMIT` deberán revertir la unidad de trabajo. El ejemplo de recuperación de respuesta supone que no hubo restauración de respaldo.
+Si cambia la huella de una clave existente, rechazamos la solicitud. Si la respuesta se pierde, el carrito conserva la clave en memoria y permite reintentar. Al cerrar el proceso se pierde esa copia. La principal mantiene la relación entre clave y venta en SQLite.
 
-### 7.4 Recuperación de solicitudes y RNF-01
+### 7.3 Refresco y exclusión de escritura
 
-Una respuesta perdida no permite concluir que la operación falló. El cliente conservará clave y contenido incluso después de reiniciar y consultará su resultado; un reenvío autorizado utilizará la misma clave y contenido. La misma clave con contenido diferente se rechazará. El registro de resultado y la venta deberán confirmarse atómicamente.
-
-Tras restaurar un respaldo, una clave ausente puede corresponder a una venta posterior al punto restaurado. Conforme al SAD, el servicio publicará una nueva generación de recuperación y bloqueará reenvíos automáticos anteriores hasta conciliación. No se crearán ventas nuevas basándose únicamente en ausencia de la clave.
-
-Para RNF-01, la terminal vendedora recibirá stock confirmado en la respuesta. Las demás actualizarán vistas mediante consultas y sondeo con visibilidad máxima propuesta de cinco segundos, bajo LAN sana y carga validada. El carrito no reserva existencias; la confirmación siempre revalida stock. La actualización visual local actual no demuestra esta condición distribuida.
+El trabajador del servicio serializa las solicitudes LAN. La UI principal escribe con otra conexión. `BEGIN IMMEDIATE` y el descuento condicionado a stock suficiente coordinan ambas rutas. Programamos el sondeo cada 2 s en las dos interfaces. La principal consulta `PRAGMA data_version` y la remota vuelve a pedir inventario. STS_LAN_02 midió visibilidad dentro de 5 s en el entorno de prueba.
 
 ## 8. Seguridad, archivos y operación
 
-### 8.1 Seguridad actual y objetivo
+Para contraseñas nuevas usamos PBKDF2-HMAC-SHA256 con 600 000 iteraciones y sal aleatoria de 16 bytes. Guardamos algoritmo, sal y resultado. Al autenticar una cuenta antigua comprobamos el SHA-256 heredado y lo sustituimos tras un acceso válido. La administración de empleados relee el rol en la base y exige Administrador o Propietario. En LAN la sesión dura hasta doce horas y se mantiene en memoria.
 
-El prototipo almacena hashes SHA-256 directos, muestra credenciales de ejemplo y presenta todas las pestañas después del acceso. El rol se almacena y visualiza, pero no establece controles efectivos para cada operación. El diseño objetivo deberá incorporar almacenamiento de contraseñas con un algoritmo específico para ese fin, aprovisionamiento de credenciales propias, sesiones revocables y autorización centralizada; algoritmo y parámetros se seleccionarán durante su implementación, conforme al SAD.
-
-Los archivos de base, imágenes y registros deberán quedar bajo permisos de la cuenta del servicio. Los clientes solo accederán a operaciones autorizadas de API. Las exportaciones y consultas de clientes, empleados y reportes estarán sujetas a permisos. Se conservará la verificación de certificados HTTPS en la LAN.
-
-### 8.2 Imágenes y archivos actuales
-
-`ProductosUI.store_product_image()` delega en `mis_trapitos/data/product_images.py`: crea `mis_trapitos_imagenes` en la raíz de la aplicación y guarda una copia con nombre saneado y UUID, mediante creación exclusiva para evitar sobrescrituras. Aplica orientación EXIF y conversión RGB para JPEG. La base guarda una referencia relativa a esa carpeta. `create_photo_image()` resuelve la referencia desde la instalación actual y genera miniaturas; la vista mantiene la referencia `PhotoImage` para evitar que desaparezca.
-
-Al abrir la base, una migración idempotente convierte las rutas existentes recuperables: reutiliza archivos administrados, reconoce rutas antiguas de Windows y POSIX, y copia fotos externas disponibles. Una referencia no recuperable se conserva para no perder su ubicación original. El traslado requiere copiar la base y la carpeta de imágenes juntas, con la aplicación cerrada. La copia de imagen sucede antes de guardar el producto y no integra una transacción con SQLite; puede quedar un archivo sin referencia si se cancela o falla el guardado. Un archivo inexistente produce un mensaje de visualización; no impide consultar el resto del producto.
-
-El diseño objetivo centralizará originales en T01 con identificadores únicos, rutas relativas administradas y descarga mediante API. El respaldo incluirá los archivos referenciados, y la limpieza de archivos huérfanos deberá respetar las copias en curso. Las exportaciones CSV son salidas de consulta y no sustituyen un respaldo completo.
-
-### 8.3 Inicio, actualización y recuperación objetivo
-
-| Condición | Comportamiento especificado |
-| --- | --- |
-| Inicio del servicio | Verificar configuración, esquema, directorios, conexión y parámetros SQLite; iniciar API y trabajador independientemente del cliente administrativo. |
-| Producción | Inicialización sin `seed_examples`; no ejecutar `run_basic_tests` sobre datos operativos. |
-| Pérdida de internet | Mantener operaciones internas si LAN y servicio están disponibles. |
-| Caída de LAN | T01 puede operar por bucle local; clientes aislados conservan borradores y suspenden confirmaciones. |
-| Caída de servicio/T01 | Todas las confirmaciones dependientes se suspenden; aplicar diagnóstico o recuperación. |
-| Actualización | Copia verificada, pausa de escrituras, migración versionada y comprobación de compatibilidad. |
-| Respaldo | Instantánea consistente de SQLite mediante API de respaldo, imágenes y manifiesto; copia en medio separado. |
-| Restauración | Una sola autoridad activa, comprobación de integridad/FK, nueva generación y conciliación previa a reenvíos. |
-
-Se mantienen los objetivos propuestos en el SAD: respaldo horario y al cierre, RPO de una hora y RTO de 60 minutos, sujetos al último respaldo disponible y a ensayos. No son resultados medidos ni funciones presentes en el prototipo. La política de retención y el procedimiento operativo completo se encuentran en la sección 8.3 del SAD.
+Guardamos cada foto con un UUID y una referencia relativa a `mis_trapitos_imagenes`. Al abrir la base, recuperamos rutas anteriores cuando existe el archivo y conservamos la referencia si falta. Copiar una foto y guardar la variante son operaciones distintas. El respaldo tiene que incluir la carpeta de imágenes además de la base.
 
 ## 9. Trazabilidad de requisitos
 
-La matriz toma los identificadores de `TRACEABILITY` sin alterar su numeración. «Evidencia» identifica implementación o pruebas disponibles; no declara cobertura exhaustiva. Los casos VD son escenarios de validación propuestos en 10.2.
+Leímos los requisitos de cada ficha del TC Design y cruzamos su identificador con Detailed status del Test Report. La columna de resultado conserva los estados del Excel. Un caso puede contribuir a varias filas. Los identificadores adicionales de conformidad, seguridad y soporte se rastrean con el mismo criterio.
 
-| Requisito | Diseño / operación | Datos principales | Evidencia y validación |
-| --- | --- | --- | --- |
-| RF-01 | UI-02, OP-02; registrar producto. | `products` | `collect_product_data`, `save_product`; pruebas de alta/edición; VD-01. |
-| RF-02 | UI-02; variantes con stock propio. | `products` | Prueba de existencias por talla/color; VD-01. |
-| RF-03 | OP-02; alta y ajuste de stock. | `products`, `inventory_movements` | `save_product`, `register_movement`; VD-02. |
-| RF-04 | OP-03; descontar y refrescar inventario. | `sales`, `sale_items`, `products`, `inventory_movements` | Prueba integrada de venta/reposiciones; VD-03. |
-| RF-05 | OP-02–OP-05; movimientos. | `inventory_movements` | Métodos de modificación y reporte de entradas; VD-02/04. |
-| RF-06 | UI-03, OP-03; venta con detalles. | `sales`, `sale_items` | `register_sale`; VD-03. |
-| RF-07 | UI-03; método de pago. | `sales.payment_method` | `PAYMENT_METHODS`, validación en `register_sale`; VD-03. |
-| RF-08 | OP-03; descuento general. | `sales` | Fórmulas y validación de `register_sale`; VD-03. |
-| RF-09 | UI-07; porcentaje y vigencia. | `promotions` | `save_promotion_ui`, `save_promotion`; VD-05. |
-| RF-10 | OP-03; promoción automática. | `promotions`, `sale_items` | `active_promotion_percent`; VD-05. |
-| RF-11 | UI-04; registrar cliente. | `customers` | `save_customer_ui`, `save_customer`; VD-06. |
-| RF-12 | UI-04, OP-06; historial. | `customers`, `sales`, `sale_items`, `products` | `customer_history`; VD-06. |
-| RF-13 | UI-05; registrar proveedor. | `suppliers` | `save_supplier_ui`, `save_supplier`; VD-06. |
-| RF-14 | UI-02/UI-05; proveedor del producto. | `products.supplier_id`, `suppliers` | FK y validación de proveedor; VD-01/06. |
-| RF-15 | UI-09, OP-06; disponibles por categoría. | `products` | `report`: filtro de categoría y stock positivo; VD-07. |
-| RF-16 | OP-06; productos en oferta. | `products`, `promotions` | `report`: vigencia de promoción; VD-05/07. |
-| RF-17 | OP-06; métodos más utilizados. | `sales` | `report`: agrupación por pago; VD-07. |
-| RF-18 | OP-06; más vendidos del último mes. | `products`, `sale_items`, `sales` | `report`: cantidades y ventana temporal; VD-07. |
-| RF-19 | OP-06; ventas de últimos tres días. | `sales`, `customers`, `employees` | `report`: revisar frontera temporal y estados, B-05; VD-07. |
-| RF-20 | OP-06; productos por proveedor. | `products`, `suppliers` | `report`: ID o nombre parcial; VD-07. |
-| RF-21 | OP-06; productos repetidos por cliente. | `sales`, `sale_items`, `products` | `report`: varias compras o unidades, B-05; VD-07. |
-| RF-22 | OP-06; vendidos por categoría en último mes. | `products`, `sale_items`, `sales` | `report`: revisar modificador temporal, B-05; VD-07. |
-| RF-23 | OP-06; precio superior y existencias. | `products` | `report`: precio estricto mayor y stock positivo; VD-07. |
-| RF-24 | OP-06; mayor descuento vigente. | `promotions`, `products` | `report`: orden descendente y límite 1; VD-05/07. |
-| RF-25 | OP-06; compras por región. | `customers`, `sales` | `report`: agrupación regional; VD-07. |
-| RF-26 | OP-06; sin ventas en tres meses. | `products`, `sale_items`, `sales` | `report`: exclusión de productos vendidos en ventana; VD-07. |
-| RNF-01 | UI-02, OP-03/07; actualización de inventario. | `products`, `inventory_movements`, `lan_requests` | Prueba integrada local y por servicio LAN (ITS_LAN_01, STS_LAN_01/02); validación manual pendiente: VD-08/09 y PA-08 del SAD. |
-
-Empleados, imágenes, devoluciones, cancelaciones y rastreabilidad tienen soporte en el código, aunque la lista RF no les asigna a todos un requisito independiente. Se documentan como funciones observadas; no se inventan identificadores RF nuevos.
+| Requisito | Componente, sección y ADR | Casos y estado en Detailed status |
+| --- | --- | --- |
+| RF-01 · Registrar productos con categoria, descripcion, precio, talla y color | ProductosUI / productos.guardar. §4, 6. ADR-04 | UTS_PRO_01, UTS_PRO_02, UTS_PRO_03, ITS_PRO_IMG_01, STS_PRO_01, STS_PRO_02, STS_PRO_03, STS_UI_01, ATS_UX_01, ATS_VD_01 (Pass) |
+| RF-02 · Manejar variaciones de talla y color con existencias | ProductosUI / productos.guardar. §4, 6. ADR-03 | UTS_PRO_04, STS_PRO_01, ATS_VD_01 (Pass) |
+| RF-03 · Agregar productos y actualizar cantidades de inventario | productos.guardar / registrar_movimiento. §5, 6. ADR-03 | UTS_PRO_03, ITS_INV_01, ITS_INV_02, ITS_REP_06, STS_PRO_02, STS_PRO_04, ATS_VD_02 (Pass) |
+| RF-04 · Actualizar inventario automaticamente al registrar venta | ventas.registrar / productos.ajustar_stock. §6, 7. ADR-05, ADR-08 | UTS_LAN_01, UTS_LAN_02, UTS_VEN_05, ITS_INV_03, ITS_LAN_01, ITS_VEN_01, ITS_VEN_02, STS_LAN_01, STS_PRO_06, STS_REC_01, ATS_VD_03 (Pass) · ATS_VD_09 (Not executed) |
+| RF-05 · Registrar movimientos de inventario | productos.registrar_movimiento / devoluciones. §5, 6. ADR-03 | ITS_INV_01, ITS_INV_02, ITS_VEN_04, ITS_VEN_05, ITS_VEN_06, ITS_VEN_07, ITS_VEN_08, STS_DEV_01, STS_DEV_02, ATS_VD_02, ATS_VD_04, CTS_BD_01, CTS_SDD_02 (Pass) |
+| RF-06 · Registrar ventas con productos, cantidades y metodo de pago | ServicioVentas / ventas.registrar. §3, 6. ADR-04, ADR-06 | UTS_UTL_01, UTS_VEN_01, UTS_VEN_CENTAVOS, UTS_VEN_PRECIO_CENTAVOS, ITS_LAN_01, ITS_MIG_02, ITS_VEN_01, STS_REC_01, STS_UI_01, STS_UI_02, ATS_UX_01, ATS_VD_03, CTS_BD_03, CTS_SDD_01 (Pass) |
+| RF-07 · Registrar pagos en efectivo, tarjeta y transferencia | PAYMENT_METHODS / ventas.registrar. §3, 6. ADR-04 | UTS_VEN_02, UTS_VEN_03, ATS_VD_03, CTS_SDD_03 (Pass) |
+| RF-08 · Aplicar descuentos a ventas | ventas.calcular_descuento. §3, 6. ADR-06 | UTS_VEN_04, UTS_VEN_06, UTS_VEN_CENTAVOS, ITS_MIG_02, ATS_VD_03, CTS_SDD_01 (Pass) |
+| RF-09 · Registrar promociones con porcentaje y duracion | PromocionesUI / promociones.guardar. §4, 6. ADR-04 | UTS_VEN_07, UTS_VEN_08, STS_PRM_01, STS_PRM_02, ATS_VD_05 (Pass) |
+| RF-10 · Aplicar descuentos automaticos segun condiciones | promociones.porcentaje_vigente / ventas.calcular_linea. §4, 6. ADR-06 | UTS_VEN_07, UTS_VEN_08, ITS_VEN_03, STS_PRM_01, ATS_VD_03 (Pass) |
+| RF-11 · Registrar clientes con nombre, direccion, correo y telefono | ContactosUI / clientes.guardar. §4, 6. ADR-04 | ITS_CON_01, STS_CON_01, STS_CON_04, STS_CON_05, ATS_VD_06 (Pass) |
+| RF-12 · Almacenar y consultar historial de compras de cada cliente | clientes.historial / ContactosUI. §4, 6. ADR-03 | ITS_CON_01, STS_CON_01, STS_CON_05, ATS_VD_06 (Pass) |
+| RF-13 · Registrar proveedores e informacion de contacto | ContactosUI / proveedores.guardar. §4, 5. ADR-04 | ITS_CON_02, STS_CON_02, STS_CON_04 (Pass) |
+| RF-14 · Relacionar proveedor con productos que suministra | productos.guardar / proveedores. §4, 5. ADR-03 | ITS_CON_02, ITS_INV_04, STS_CON_02, ATS_VD_01 (Pass) |
+| RF-15 · Consultar productos disponibles e inventario por categoria | ReportesUI / reportes.ejecutar. §4, 6. ADR-03 | ITS_REP_01, STS_CAR_01, ATS_VD_07, CTS_CSV_01 (Pass) |
+| RF-16 · Consultar productos en oferta y descuentos | ReportesUI / reportes.ejecutar. §4, 6. ADR-03 | ITS_REP_01, ATS_VD_05, ATS_VD_07 (Pass) |
+| RF-17 · Consultar metodos de pago mas utilizados | ReportesUI / reportes.ejecutar. §4, 6. ADR-03 | ITS_REP_02, ITS_REP_07, STS_CAR_01, ATS_VD_07, CTS_CSV_02 (Pass) |
+| RF-18 · Consultar productos mas vendidos en el ultimo mes | ReportesUI / reportes.ejecutar. §4, 6. ADR-03 | ITS_REP_03, ITS_REP_07, STS_CAR_01, ATS_VD_07 (Pass) |
+| RF-19 · Consultar ventas realizadas en los ultimos tres dias | ReportesUI / reportes.ejecutar. §4, 6. ADR-03 | ITS_REP_04, STS_CAR_01, ATS_VD_07, CTS_FMT_02 (Pass) |
+| RF-20 · Consultar productos de un proveedor especifico | ReportesUI / reportes.ejecutar. §4, 6. ADR-03 | ITS_REP_05, ATS_VD_07 (Pass) |
+| RF-21 · Consultar productos comprados mas de una vez por un cliente | ReportesUI / reportes.ejecutar. §4, 6. ADR-03 | ITS_REP_05, ATS_VD_07 (Pass) |
+| RF-22 · Consultar productos vendidos por categoria en el ultimo mes | ReportesUI / reportes.ejecutar. §4, 6. ADR-03 | ITS_REP_03, ATS_VD_07 (Pass) |
+| RF-23 · Consultar productos con precio superior a cierto valor y existencias | ReportesUI / reportes.ejecutar. §4, 6. ADR-03 | ITS_REP_06, ATS_VD_07 (Pass) |
+| RF-24 · Consultar producto con mayor descuento vigente | ReportesUI / reportes.ejecutar. §4, 6. ADR-03 | ITS_REP_01, ATS_VD_07 (Pass) |
+| RF-25 · Consultar compras por ciudad o region del cliente | ReportesUI / reportes.ejecutar. §4, 6. ADR-03 | ITS_REP_02, STS_CAR_01, ATS_VD_07 (Pass) |
+| RF-26 · Consultar productos no vendidos en los ultimos tres meses | ReportesUI / reportes.ejecutar. §4, 6. ADR-03 | ITS_REP_06, ATS_VD_07 (Pass) |
+| RNF-01 · Reflejar en tiempo real la disminucion del inventario | App / TerminalLAN / ServidorLAN. §7. ADR-05, ADR-08 | UTS_LAN_01, UTS_LAN_02, ITS_INV_03, ITS_LAN_01, ITS_LAN_02, ITS_LAN_03, STS_CAR_01, STS_LAN_01, STS_LAN_02, STS_PRO_05, STS_PRO_06, STS_PRO_07, ATS_INS_01 (Pass) · ATS_VD_08, ATS_VD_09 (Not executed) |
+| SEG-01 · Acceso y roles | empleados.autenticar / empleados.exigir_permiso. §8. ADR-09, ADR-04 | UTS_CON_01, UTS_SEG_01, ITS_LAN_03, ITS_SEG_01, STS_CON_03, STS_CON_04, STS_LOG_01, STS_LOG_02, STS_SEG_01, CTS_SEG_01, CTS_SEG_02 (Pass) · ATS_SEG_01 (Not executed) |
+| GEN-01 · Arranque | main / App. §2. ADR-01, ADR-02 | STS_LOG_03 (Pass) |
+| ISO-8601 · Fechas y horas | utils.now_text / today_text. §5. ADR-03 | CTS_FMT_01, CTS_FMT_02 (Pass) |
+| RFC-4180 · Exportación CSV | ProductosUI / ReportesUI. §4. ADR-02, ADR-04 | CTS_CSV_01, CTS_CSV_02 (Pass) |
+| FIPS-180-4 · SHA-256 | utils.verify_password. §8. ADR-09 | CTS_SEG_01 (Pass) |
+| RFC-8018 · PBKDF2 | utils.hash_password. §8. ADR-09 | CTS_SEG_01, CTS_SEG_02 (Pass) |
+| BD-MIG · Migraciones | schema.migrate_schema. §5. ADR-07 | ITS_MIG_01 (Pass) |
+| SQL-FK · Integridad de SQLite | Database / schema. §5. ADR-03, ADR-07 | ITS_MIG_01, STS_REC_01, CTS_BD_01, CTS_BD_02, CTS_BD_03 (Pass) |
+| SDD-CONTRATOS · Contratos y movimientos | ventas.registrar / devoluciones. §3, 6. ADR-04, ADR-06 | ITS_LAN_02, CTS_SDD_01, CTS_SDD_02, CTS_SDD_03 (Pass) |
 
 ## 10. Verificación y aceptación documental
 
-### 10.1 Método y alcance de la revisión
+### 10.1 Ejecución y cobertura
 
-Se revisaron las clases, manejadores de UI, SQL de creación, consultas de reportes y pruebas existentes. El diccionario se contrastó con el DDL extraído del código y ejecutado en una base SQLite en memoria, sin inicializar la aplicación ni cargar ejemplos. Las comprobaciones de estructura documental verificaron tablas, campos, relaciones, requisitos, enlaces locales y diagramas Mermaid.
+El Test Report cuenta 97 TC planeados. Se ejecutaron 94 y los 94 pasaron (100 % de los ejecutados). No hubo Failed ni Blocked. Los cinco manuales pertenecen a ATS y aparecen desglosados sin sumarlos otra vez.
 
-| Comprobación | Resultado registrado |
+| Nivel o método | Planeados | Pass | Not executed |
+| --- | --- | --- | --- |
+| UTS · Unitarias | 19 | 19 | 0 |
+| ITS · Integración | 28 | 28 | 0 |
+| STS · Sistema | 26 | 26 | 0 |
+| ATS · Aceptación | 12 | 9 | 3 |
+| CTS · Conformidad | 12 | 12 | 0 |
+| Total | 97 | 94 | 3 |
+| De los 12 ATS, manuales | 5 | 2 | 3 |
+
+La hoja Summary omite la cobertura de líneas. En test-reports de la misma corrida, coverage.json registra 2 241 de 2 552 líneas (87,81 %, redondeado a 88 %). JUnit recoge 223 pruebas pytest. Varias pruebas comparten un TC. En la hoja intro del plan y del diseño consta la revisión de Kelly Arellano del 13/11/2026. La emisión del 24/11 no aporta una nueva aprobación.
+
+Para entrar se pide la rama modular integrada, pytest instalable y base temporal. Para salir se pide ejecutar todos los automatizados, cubrir cada RF con al menos un TC, reportar cobertura y justificar defectos abiertos, sin críticos abiertos que afecten RF. Se ejecutaron los 92 TC automatizados. De los manuales, ATS_INS_01 y ATS_UX_01 cuentan con registro del 29/10/2026. La sesión en un solo equipo incluyó instalación sin internet y un recorrido de 60 s realizado por Carlos Fonseca. Conservamos [capturas, mediciones y registros](testing/evidencias/2026-10-29/README.md). [REGISTRO_ACEPTACION.md](testing/REGISTRO_ACEPTACION.md) es la plantilla para cada nueva sesión.
+
+El plan declara Windows 10/11 o Ubuntu 22.04, Python 3.12, SQLite 3 temporal con load_examples=False, pytest 8 y pytest-cov, y Tkinter con Xvfb en CI sobre ubuntu-latest. El manifiesto usado en la línea base fija pytest 9.2.0.
+
+### 10.2 Escenarios de verificación del diseño
+
+| Escenario | Evidencia y alcance |
 | --- | --- |
-| Modelo físico | Diez tablas, 76 campos y once FK contrastados con el DDL en SQLite en memoria; tipos y orden de campos coincidentes con el diccionario. |
-| Trazabilidad | RF-01–RF-26 y RNF-01 presentes en la matriz; 27 identificadores, sin omisiones ni duplicados en ella. |
-| Referencias locales | Destinos de archivos e índice revisados; README enlaza el SDD. |
-| Diagramas | Diez bloques Mermaid; registro de verificación de sintaxis y renderizado indicado a continuación. |
-| Pruebas existentes | Doce pruebas aprobadas mediante `python -B -m unittest discover -s tests -v`, usando Python 3.12.14, Pillow 12.3.0 y Tk 8.6 del entorno de ejecución incluido con Codex. |
-| Observaciones del entorno de pruebas | El Python predeterminado carecía de Pillow; se utilizó el entorno disponible sin instalar dependencias en el proyecto. Durante la ejecución satisfactoria se emitieron avisos `ttk::ThemeChanged` al destruir ventanas; no fallaron las aserciones. |
-| Alcance de cambios | Documento SDD y enlace en README; sin modificaciones de código o esquema de aplicación. |
+| VD-01 · Variantes | ATS_VD_01 y UTS_PRO_02, Pass. Alta, diferenciación y rechazo de código duplicado. |
+| VD-02 · Ajuste | ATS_VD_02 e ITS_INV_02, Pass. Verifican movimiento por diferencia. La inyección de fallo en producto y movimiento queda sin TC específico. |
+| VD-03 · Venta | ATS_VD_03 y CTS_SDD_01, Pass. Promoción, descuento general y contrato en centavos. |
+| VD-04 · Reposición | ATS_VD_04 e ITS_VEN_08, Pass. Devolución previa, cancelación y partidas repetidas. |
+| VD-05 · Vigencia | ATS_VD_05 y STS_PRM_02, Pass. Una promoción vencida deja de aplicar y el formulario rechaza fechas inválidas. |
+| VD-06 · Contactos | ATS_VD_06 y STS_CON_05, Pass. Historial del cliente y selección en pantalla. |
+| VD-07 · Reportes | ATS_VD_07 e ITS_REP_07, Pass. Se ejercitan doce requisitos y una devolución. Véase B-05. |
+| VD-08 · Última unidad | STS_LAN_01, Pass con dos clientes remotos y la principal. El manual ATS_VD_09 sigue Not executed. |
+| VD-09 · Reintento y refresco | ITS_LAN_02 y STS_LAN_02, Pass. El manual de visibilidad ATS_VD_08 sigue Not executed. |
+| VD-10 · Instalación, seguridad y recuperación | ATS_INS_01 e ITS_SEG_01, Pass. ATS_SEG_01, Not executed. Falta restauración completa en otro equipo. |
 
-Los diez diagramas se validaron y renderizaron con Mermaid 11.12.0 en un entorno temporal de revisión, sin agregar dependencias al repositorio. Se revisaron sus imágenes para comprobar legibilidad y disposición; se ajustaron etiquetas extensas y sintaxis de mensajes. El código Mermaid permanece incluido en el documento como fuente editable.
-
-La revisión documental no certifica corrección funcional completa, rendimiento multiusuario, seguridad de producción ni conformidad normativa integral. Las pruebas no ejecutadas y los componentes propuestos se mantienen identificados como pendientes.
-
-### 10.2 Escenarios de validación funcional y de diseño
-
-| ID | Escenario | Resultado esperado / condición |
-| --- | --- | --- |
-| VD-01 | Alta y edición de dos variantes; código duplicado, proveedor inexistente y datos inválidos. | Existencias independientes y rechazo sin alteraciones indebidas; conservar selección e imagen. |
-| VD-02 | Fallo entre producto y movimiento. | Objetivo: reversión conjunta. El estado actual presenta la brecha B-02. |
-| VD-03 | Venta con cantidad límite, carrito vacío, descuentos 0/100 y varios medios de pago. | Validación correcta y consistencia entre cabecera, detalle, stock y movimientos. |
-| VD-04 | Devolución parcial y cancelación posterior; repetir operación e introducir líneas duplicadas por producto. | Objetivo: reponer exactamente el remanente una vez; rechazar exceso. Revisar B-03. |
-| VD-05 | Promociones superpuestas, inicio/fin y fechas inválidas. | Mayor porcentaje vigente, límites definidos y validación de fechas; contrastar tiempo de Python y SQL. |
-| VD-06 | Clientes/proveedores, relación opcional y consulta de historial. | Persistencia y FK correctas; historial con estados e importes trazables. |
-| VD-07 | Reportes RF-15–RF-26 con ventas canceladas, devoluciones y fechas frontera. | Conciliar contra un conjunto esperado; resolver los criterios de B-05 antes de afirmar cumplimiento. |
-| VD-08 | Siete solicitudes por la última unidad; fallo antes de confirmar. | Objetivo: una venta válida, stock cero y ninguna escritura parcial; corresponde a PA-02/03 del SAD. |
-| VD-09 | Respuesta perdida, reenvío, desconexión y refresco entre terminales. | Objetivo: no duplicar efectos; conservar borrador y actualizar según umbral del SAD, PA-04/06/08. |
-| VD-10 | Restauración, autorización por operación e instalación sin internet. | Objetivo: integridad, conciliación y acceso correcto; PA-01/09/10 del SAD. |
-
-Los ensayos de siete sesiones y rendimiento se regirán también por PA-11 del SAD. No se reemplazan por una ejecución local de las pruebas de productos.
-
-### 10.3 Correspondencia con la aceptación de la historia #5
-
-| Necesidad de la historia | Evidencia documental | Estado |
-| --- | --- | --- |
-| Estructura técnica de módulos | Sección 3 y figura D-03. | Descrita contra la línea base. |
-| Componentes de interfaz Tkinter | Sección 4 y estados de operación. | Descritos; componentes remotos marcados como propuestos. |
-| Modelo relacional SQLite | Sección 5, figura D-04 y diccionario. | Esquema actual documentado; evolución identificada. |
-| Arquitectura local de siete terminales | Secciones 2.2 y 7, figuras D-02/D-10. | Diseño propuesto consistente con SAD; implementación pendiente. |
-| Diagramas de arquitectura, clases y secuencias | Figuras D-01–D-10. | Incluidos en formato editable. |
-| Validación para el reporte | Registro de revisión, trazabilidad y escenarios en secciones 9–10. | Verificación documental; aprobación final del equipo pendiente. |
-
-La aprobación del alcance de elaboración no se registra como aprobación del documento final. El equipo responsable podrá formalizarla registrando versión, fecha, revisor y observaciones resueltas; no se asignan firmas ni aprobaciones no efectuadas.
+El número del ATS manual y el del escenario histórico pueden diferir. El catálogo llama ATS_VD_08 a la consistencia entre dos terminales y ATS_VD_09 a las ventas simultáneas. Conservamos ambos nombres del Excel.
 
 ## 11. Brechas y decisiones pendientes
 
-| ID | Evidencia / implicación | Tratamiento y responsable propuesto |
-| --- | --- | --- |
-| B-01 | Parcial (#56): servicio LAN mínimo (`mis_trapitos/lan/`) con sesión, inventario, venta idempotente, escritor único y sondeo de 2 s. Faltan TLS, permisos por operación en el servicio, generación de recuperación y los demás módulos por LAN. | Desarrollo: completar contratos de sección 7; pruebas: UTS/ITS/STS_LAN_*, ATS_VD_08/09 y PA-01–PA-12 del SAD. |
-| B-02 | `save_product` confirma producto y movimiento por separado; lecturas de venta sin bloqueo anticipado. | Desarrollo: unidad de trabajo completa y validación dentro de transacción de escritura. |
-| B-03 | Devolución valida antes de escribir; cancelación presupone detalle único por producto y no tiene unicidad SQL por venta. | Desarrollo: agregar cantidades, serializar reposiciones y definir restricciones compatibles con históricos. |
-| B-04 | SHA-256 directo, credenciales de ejemplo y rol sin autorización efectiva. | Desarrollo/administración: implementar credenciales, sesiones y matriz de permisos aprobada por negocio. |
-| B-05 | Fechas Python/SQL, modificador mensual con espacios y criterios ambiguos de reportes; devoluciones y descuentos generales no conciliados en todos los agregados. | Negocio/pruebas: acordar zona horaria, ventanas y semántica; desarrollo: corregir en trabajo separado con casos esperados. |
-| B-06 | Importes `REAL`, costos históricos dependientes del catálogo y moneda no configurada formalmente. | Negocio/desarrollo: acordar redondeo y moneda, guardar costos de venta y migrar con conciliación. |
-| B-07 | UUID y rutas relativas con migración local implementados (#89). Persisten copias anteriores al guardado y referencias antiguas sin archivo recuperable. | Pendiente: administración central, limpieza de huérfanos y consistencia de archivos y respaldo; recuperar manualmente fotos ausentes. |
-| B-08 | Sin migraciones versionadas ni dependencias fijadas; ejemplos cargados en inicialización. | Desarrollo/soporte: separar producción y pruebas, empaquetar y verificar instalación sin internet. |
-| B-09 | Asignación de puestos, permisos, tiempos y políticas operativas son supuestos del SAD. | Administración/equipo: confirmar supuestos y medir objetivos antes del despliegue. |
+Evaluamos cada brecha con todo lo que pedía la versión 1.0. Una corrección puede cerrar el defecto reportado y dejar parte de la brecha pendiente. Los siete defectos de Bug report aparecen cerrados.
 
-Estas brechas delimitan el diseño y orientan trabajos posteriores. Su registro no aplica cambios funcionales, crea incidencias externas ni modifica las decisiones aprobadas del SAD.
+| Brecha y estado | Cambio verificado | TC y defecto |
+| --- | --- | --- |
+| B-01 · Parcial | PR #94. El escritor LAN, la clave idempotente y el sondeo resuelven inventario y venta. Faltan TLS, recuperación tras reiniciar y otros módulos remotos. | ITS_LAN_02 y STS_LAN_02, Pass. ATS_VD_08 y ATS_VD_09, Not executed. #56 cerrado. |
+| B-02 · Cerrada | PR #50 y #94. Producto y movimiento comparten transacción. La venta obtiene el bloqueo antes de leer existencias. | ITS_INV_01, ITS_INV_02, UTS_LAN_01 e ITS_VEN_02, Pass. El fallo inyectado corresponde a la venta. |
+| B-03 · Parcial | PR #99. La cancelación agrupa líneas repetidas. El estado y el saldo se leen antes de la transacción en parte del flujo. cancellations.sale_id carece de unicidad. | ITS_VEN_07 e ITS_VEN_08, Pass. #53 cerrado. Concurrencia de reposiciones sin ensayo. |
+| B-04 · Parcial | PR #77 y #95. PBKDF2 y control de empleados implementados. Hay cuentas de demostración en la semilla opcional. Falta autorización general por operación. | CTS_SEG_01, CTS_SEG_02, ITS_SEG_01 y STS_SEG_01, Pass. ATS_SEG_01, Not executed. #57 cerrado. |
+| B-05 · Parcial | PR #79 y #99. Validamos fechas de promociones y neteamos devoluciones en Ventas por producto. Otras consultas aún agregan importes brutos o usan la fecha UTC de SQLite frente a hora local. | STS_PRM_02, ITS_REP_03 e ITS_REP_07, Pass. #54 y #78 cerrados. |
+| B-06 · Parcial | PR #97. Cerramos el uso de REAL para dinero. La partida conserva precio de venta, pero la utilidad usa el costo actual y no hay configuración formal de moneda. | UTS_VEN_CENTAVOS, ITS_MIG_02 y CTS_SDD_01, Pass. Costo histórico sin TC directo. |
+| B-07 · Parcial | PR #92. UUID, referencias relativas y migración de rutas recuperables. Quedan fotos huérfanas y faltantes, y copia coordinada de archivos. | ITS_PRO_IMG_01 y STS_PRO_03, Pass. |
+| B-08 · Cerrada | PR #96 y #97. Versionamos el esquema, fijamos dependencias directas y separamos los ejemplos con load_examples=False por defecto. El primer acceso en instalación limpia se sigue en B-09. | ITS_MIG_01 e ITS_MIG_02, Pass. ATS_INS_01, Pass histórico del 29/10. |
+| B-09 · Abierta | PR #80 aporta la sesión en un equipo y #94 prueba concurrencia en laboratorio. Falta validar la asignación de siete puestos, latencias bajo la carga prevista y recuperación en tienda. | STS_CAR_01 y ATS_UX_01, Pass de alcance parcial. ATS_VD_08 y ATS_VD_09, Not executed. |
 
 ## 12. Referencias
 
-### 12.1 Fuentes internas
+Contrastamos [el código de la línea base](https://github.com/SQEquipo3/Trapitos/tree/276fcb5), [las fichas y metadatos](testing/README.md) y [las pruebas](../tests/) con los libros publicados en la [corrida 75](https://github.com/SQEquipo3/Trapitos/actions/runs/45336280390). El [release qa-latest](https://github.com/SQEquipo3/Trapitos/releases/tag/qa-latest) se actualiza con cada publicación desde main.
 
-- [Código principal: `mis_trapitos_app_v7.py`](../mis_trapitos_app_v7.py): `TRACEABILITY`, `REPORTS`, `Database.create_schema`, operaciones de negocio y `App`.
-- [Interfaz de productos: `ui_productos.py`](../ui_productos.py): `ProductosUI`, validaciones, refresco, imágenes y CSV.
-- [Pruebas de productos: `tests/test_ui_productos.py`](../tests/test_ui_productos.py): escenarios locales de widgets y persistencia temporal.
-- [SAD](SAD.md): decisiones ADR-01–ADR-05, capas, despliegue, concurrencia, recuperación y PA-01–PA-12.
-- [README](../README.md): ejecución, dependencias declaradas y comando de pruebas.
-
-### 12.2 Fuentes técnicas primarias
-
-- [IEEE 830-1998 — Software Requirements Specifications](https://standards.ieee.org/ieee/830/1222/).
-- [IEEE 1016-2009 — Software Design Descriptions](https://standards.ieee.org/ieee/1016/4502/).
-- [Python — Modelo de hilos de Tkinter](https://docs.python.org/3/library/tkinter.html#threading-model).
-- [SQLite — Transacciones](https://www.sqlite.org/lang_transaction.html).
-- [SQLite — Write-Ahead Logging](https://www.sqlite.org/wal.html).
-
-Las fuentes externas sustentan el alcance normativo y las decisiones técnicas indicadas junto a cada referencia. Los detalles de Mis Trapitos proceden del código y del SAD; los contratos futuros constituyen propuestas de diseño.
+| Archivo publicado | Uso |
+| --- | --- |
+| SW_Test_Plan_Team03_Trapitos.xlsx | Alcance, ambiente, criterios y Matrix. |
+| TC_Design_Team03_Trapitos.xlsx | Objetivo, pasos, requisitos y resultado esperado de cada TC. |
+| SWT_summary_report_Team03_Trapitos.xlsx | Summary, Detailed status y Bug report de la ejecución. |
