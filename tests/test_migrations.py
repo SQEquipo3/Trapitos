@@ -2,8 +2,10 @@
 import sqlite3
 
 from mis_trapitos.data.database import Database
-from mis_trapitos.data.schema import migrate_schema
+from mis_trapitos.data.schema import MIGRACIONES, migrate_schema
 from tests.tc import tc
+
+ULTIMA_VERSION = MIGRACIONES[-1][0]
 
 
 @tc("ITS_MIG_01", nivel="ITS", modulo="contactos", reqs=["BD-MIG", "SQL-FK"],
@@ -21,7 +23,7 @@ def test_base_nueva_aplica_migracion(tmp_path):
       proveedor, abrirla con Database() y leer el proveedor.
     - En test_migraciones_idempotentes: llamar migrate_schema(db) dos veces más.
     Esperado:
-    - user_version queda en la versión de la migración 1.
+    - user_version queda en la versión de la última migración registrada.
     - suppliers tiene products_supplied y last_order_date, cada una una sola vez.
     - El proveedor antiguo sigue existiendo con su teléfono '1234567890'.
     """
@@ -37,7 +39,7 @@ def test_base_nueva_aplica_migracion(tmp_path):
         for fila in db.query("PRAGMA table_info(suppliers)")
     ]
 
-    assert version == 1
+    assert version == ULTIMA_VERSION
     assert "products_supplied" in columnas
     assert "last_order_date" in columnas
 
@@ -86,7 +88,7 @@ def test_base_antigua_conserva_datos(tmp_path):
         for fila in db.query("PRAGMA table_info(suppliers)")
     ]
 
-    assert db.scalar("PRAGMA user_version") == 1
+    assert db.scalar("PRAGMA user_version") == ULTIMA_VERSION
     assert proveedor is not None
     assert proveedor["phone"] == "1234567890"
     assert "products_supplied" in columnas
@@ -113,7 +115,7 @@ def test_migraciones_idempotentes(tmp_path):
         for fila in db.query("PRAGMA table_info(suppliers)")
     ]
 
-    assert version == 1
+    assert version == ULTIMA_VERSION
     assert columnas.count("products_supplied") == 1
     assert columnas.count("last_order_date") == 1
 

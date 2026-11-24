@@ -88,7 +88,9 @@ def _consolidar(carrito):
 
 
 def _huella(employee_id, cliente_id, metodo_pago, descuento, carrito):
-    contenido = json.dumps([employee_id, cliente_id, metodo_pago, descuento, carrito], sort_keys=True)
+    # parsear_descuento regresa Decimal; float conserva el formato de huellas previas.
+    contenido = json.dumps([employee_id, cliente_id, metodo_pago, float(descuento), carrito],
+                           sort_keys=True)
     return hashlib.sha256(contenido.encode("utf-8")).hexdigest()
 
 

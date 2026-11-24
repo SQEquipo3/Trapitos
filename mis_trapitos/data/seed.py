@@ -113,9 +113,21 @@ supplier_ids.get("Ropa Norte"), date_offset(-7), "Abrigo MX", "Invierno", ""),
     for row in products:
         existing = db.one("SELECT id FROM products WHERE code=?", (row[0],))
         if not existing:
-            cur = db.execute("""INSERT INTO products(code, name, category, size, color,
-purchase_price, sale_price, stock, supplier_id, entry_date, brand, season, image_path, created_at)
-VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)"""         , (*row, now_text()))
+            cur = db.execute(
+    """INSERT INTO products(
+        code, name, category, size, color,
+        purchase_price, sale_price, stock, supplier_id,
+        entry_date, brand, season, image_path, created_at
+    )
+    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+    (
+        *row[:5],
+        int(row[5] * 100),
+        int(row[6] * 100),
+        *row[7:],
+        now_text(),
+    ),
+)
             productos_repo.registrar_movimiento(db, cur.lastrowid, "ENTRADA", row[7], "Alta inicial de ejemplo"                        ,
 None)
         else:

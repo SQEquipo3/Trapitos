@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 
 from config import PAYMENT_METHODS
-from utils import dinero
+from utils import dinero_centavos
 from mis_trapitos.ui.base import (
     ActionBar,
     FormGrid,
@@ -78,7 +78,9 @@ class VentasUI(ScrollablePage):
         for line in self.servicio.lineas():
             self.cart_tree.insert("", tk.END, values=(
                 line["id"], line["code"], line["name"], line["quantity"],
-                dinero(line["unit_price"]), f"{line['promo']:g}%", dinero(line["line_total"]),
+                dinero_centavos(line["unit_price"]),
+                f"{line['promo']:g}%",
+                dinero_centavos(line["line_total"]),
             ))
         try:
             subtotal, _, total = self.servicio.totales(self.sale_discount.get())
@@ -87,9 +89,18 @@ class VentasUI(ScrollablePage):
             subtotal, _, total = self.servicio.totales(0)
             discount = 0
         self.ticket_text.delete("1.0", tk.END)
-        self.ticket_text.insert(tk.END, f"Subtotal con promociones: {dinero(subtotal)}\n")
-        self.ticket_text.insert(tk.END, f"Descuento general: {discount:g}%\n")
-        self.ticket_text.insert(tk.END, f"Total estimado: {dinero(total)}\n")
+        self.ticket_text.insert(
+    tk.END,
+    f"Subtotal con promociones: {dinero_centavos(subtotal)}\n"
+)
+        self.ticket_text.insert(
+    tk.END,
+    f"Descuento general: {discount:g}%\n"
+)
+        self.ticket_text.insert(
+    tk.END,
+    f"Total estimado: {dinero_centavos(total)}\n"
+)
 
     def register_sale_ui(self):
         try:
@@ -100,11 +111,15 @@ class VentasUI(ScrollablePage):
             )
             self.ticket_text.delete("1.0", tk.END)
             self.ticket_text.insert(
-                tk.END,
-                f"VENTA REGISTRADA\nTicket: {r.sale_id}\nFecha: {r.fecha}\n"
-                f"Subtotal: {dinero(r.subtotal)}\nDescuento: {dinero(r.descuento)}\n"
-                f"Total: {dinero(r.total)}\nMetodo: {r.metodo_pago}\n",
-            )
+    tk.END,
+    f"VENTA REGISTRADA\n"
+    f"Ticket: {r.sale_id}\n"
+    f"Fecha: {r.fecha}\n"
+    f"Subtotal: {dinero_centavos(r.subtotal)}\n"
+    f"Descuento: {dinero_centavos(r.descuento)}\n"
+    f"Total: {dinero_centavos(r.total)}\n"
+    f"Metodo: {r.metodo_pago}\n",
+)
             self.clear_cart(keep_ticket=True)
             if self.on_venta_registrada:
                 self.on_venta_registrada()

@@ -13,11 +13,11 @@ from tkinter import messagebox, ttk
 
 from config import APP_TITLE, APP_VERSION, PAYMENT_METHODS
 from mis_trapitos.lan.cliente import ClienteLAN, ErrorLAN, nueva_clave
-from mis_trapitos.services.ventas import parsear_descuento
+from mis_trapitos.services.ventas import calcular_descuento, calcular_linea, parsear_descuento
 from mis_trapitos.ui.base import ActionBar, FormGrid, ScrollablePage, make_tree
 from mis_trapitos.ui.login import Login
 from mis_trapitos.ui.styles import UI_COLORS, configure_styles
-from utils import dinero
+from utils import dinero_centavos as dinero
 
 SONDEO_MS = 2000
 COLUMNAS_INVENTARIO = ("id", "codigo", "producto", "categoria", "talla", "color", "stock", "precio", "proveedor")
@@ -80,16 +80,18 @@ class CarritoLAN:
             p = self.productos.get(item["product_id"])
             if p is None:
                 continue
-            total = float(p["precio"]) * item["quantity"] * (1 - float(p["promo"]) / 100)
+            # Los precios llegan del servidor en centavos enteros.
+            total = calcular_linea(p["precio"], item["quantity"], p["promo"])
             filas.append({"id": p["id"], "code": p["codigo"], "name": p["producto"],
-                          "quantity": item["quantity"], "unit_price": float(p["precio"]),
+                          "quantity": item["quantity"], "unit_price": int(p["precio"]),
                           "promo": float(p["promo"]), "line_total": total})
         return filas
 
     def totales(self, descuento=0):
         descuento = parsear_descuento(descuento)
-        subtotal = sum(line["line_total"] for line in self.lineas())
-        return subtotal, subtotal * descuento / 100, subtotal * (1 - descuento / 100)
+        subtotal = sum(int(line["line_total"]) for line in self.lineas())
+        monto = calcular_descuento(subtotal, descuento)
+        return subtotal, monto, subtotal - monto
 
     def registrar(self, cliente_id, metodo_pago, descuento):
         if not self.cart:

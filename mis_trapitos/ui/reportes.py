@@ -12,6 +12,18 @@ from mis_trapitos.ui.base import (
 )
 
 from mis_trapitos.data.repositories import reportes as reportes_repo
+from utils import dinero_centavos
+
+# Columnas de reportes que traen importes en centavos.
+COLUMNAS_IMPORTE = {"precio", "total", "costo", "utilidad", "importe_vendido"}
+# En estos reportes «ventas» es un importe; en los demás es un conteo.
+REPORTES_VENTAS_IMPORTE = {"Ventas por producto", "Resumen de utilidades"}
+
+
+def es_importe(reporte, columna):
+    return columna in COLUMNAS_IMPORTE or (
+        columna == "ventas" and reporte in REPORTES_VENTAS_IMPORTE
+    )
 
 
 REPORTS = [
@@ -162,11 +174,18 @@ class ReportesUI(ScrollablePage):
                 columns,
             )
 
+            reporte = self.report_combo.get()
+
             for row in rows:
                 self.report_tree.insert(
                     "",
                     tk.END,
-                    values=[row[col] for col in columns],
+                    values=[
+                        dinero_centavos(row[col])
+                        if es_importe(reporte, col) and row[col] is not None
+                        else row[col]
+                        for col in columns
+                    ],
                 )
 
         except Exception as e:

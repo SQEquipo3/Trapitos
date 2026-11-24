@@ -3,7 +3,7 @@
 import hashlib
 import hmac
 import secrets
-
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from datetime import date, datetime, timedelta
 
 from config import DATE_FMT, DATETIME_FMT
@@ -34,7 +34,27 @@ def dinero(value):
         return f"${float(value):,.2f}"
     except (ValueError, TypeError):
         return "$0.00"
+def a_centavos(value):
+    """Convierte pesos a centavos enteros con redondeo comercial."""
+    try:
+        cantidad = Decimal(str(value or 0))
+        if not cantidad.is_finite():
+            raise ValueError
+        return int(
+            (cantidad * 100).quantize(
+                Decimal("1"),
+                rounding=ROUND_HALF_UP
+            )
+        )
+    except (InvalidOperation, TypeError, ValueError):
+        raise ValueError("El importe no es válido.")
 
+
+def dinero_centavos(value):
+    """Muestra un importe almacenado en centavos como pesos."""
+    centavos = int(value or 0)
+    pesos = Decimal(centavos) / Decimal(100)
+    return f"${pesos:,.2f}"
 
 def hash_password(password):
     """

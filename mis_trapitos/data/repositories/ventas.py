@@ -23,25 +23,59 @@ def cantidad_vendida(db, sale_id, product_id):
     ) or 0
 
 
-def insertar(db, fecha, customer_id, employee_id, metodo_pago, subtotal, descuento, monto, total):
-    """Inserta la venta como ACTIVA. Regresa su id."""
+
+def insertar(db, fecha, customer_id, employee_id, metodo_pago,
+             subtotal, descuento, monto, total):
+    """Inserta la venta como ACTIVA. Los importes se guardan en centavos."""
+
     cur = db.execute(
-        """INSERT INTO sales(sale_datetime, customer_id, employee_id, payment_method, subtotal,
-                             sale_discount_percent, discount_amount, total, status)
+        """INSERT INTO sales(
+               sale_datetime,
+               customer_id,
+               employee_id,
+               payment_method,
+               subtotal,
+               sale_discount_percent,
+               discount_amount,
+               total,
+               status
+           )
            VALUES(?,?,?,?,?,?,?,?,?)""",
-        (fecha, customer_id, employee_id, metodo_pago, subtotal, descuento, monto, total, "ACTIVA"),
+        (
+            fecha,
+            customer_id,
+            employee_id,
+            metodo_pago,
+            int(subtotal),
+            float(descuento),  # El porcentaje se almacena como REAL.
+            int(monto),
+            int(total),
+            "ACTIVA",
+        ),
     )
+
     return cur.lastrowid
 
 
-def insertar_partida(db, sale_id, product_id, quantity, unit_price, promo, line_total):
-    db.execute(
-        """INSERT INTO sale_items(sale_id, product_id, quantity, unit_price,
-                                  promo_discount_percent, line_total)
-           VALUES(?,?,?,?,?,?)""",
-        (sale_id, product_id, quantity, unit_price, promo, line_total),
-    )
+def insertar_partida(db, sale_id, product_id, quantity,
+                     unit_price, promo, line_total):
+    """Guarda el precio unitario y el total de línea en centavos."""
 
+    db.execute(
+        """INSERT INTO sale_items(
+               sale_id, product_id, quantity, unit_price,
+               promo_discount_percent, line_total
+           )
+           VALUES(?,?,?,?,?,?)""",
+        (
+            sale_id,
+            product_id,
+            quantity,
+            int(unit_price),
+            promo,
+            int(line_total),
+        ),
+    )
 
 def marcar_cancelada(db, sale_id):
     db.execute("UPDATE sales SET status='CANCELADA' WHERE id=?", (sale_id,))

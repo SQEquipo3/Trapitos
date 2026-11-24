@@ -1,4 +1,5 @@
 
+
 """Creación y migraciones versionadas del esquema SQLite."""
 
 # ============================================================
@@ -9,8 +10,8 @@ def create_schema(db):
     """
     Crea todas las tablas de la aplicación si todavía no existen.
 
-    Las modificaciones posteriores de la estructura se realizan
-    mediante las migraciones numeradas.
+    Los importes monetarios se almacenan como INTEGER,
+    representando centavos en lugar de pesos.
     """
 
     db.conn.executescript(
@@ -20,7 +21,9 @@ def create_schema(db):
             name TEXT NOT NULL UNIQUE,
             phone TEXT,
             address TEXT,
-            created_at TEXT NOT NULL
+            created_at TEXT NOT NULL,
+            products_supplied TEXT,
+            last_order_date TEXT
         );
 
         CREATE TABLE IF NOT EXISTS employees (
@@ -50,8 +53,10 @@ def create_schema(db):
             category TEXT NOT NULL,
             size TEXT NOT NULL,
             color TEXT NOT NULL,
-            purchase_price REAL NOT NULL CHECK(purchase_price >= 0),
-            sale_price REAL NOT NULL CHECK(sale_price >= 0),
+            purchase_price INTEGER NOT NULL
+                CHECK(purchase_price >= 0),
+            sale_price INTEGER NOT NULL
+                CHECK(sale_price >= 0),
             stock INTEGER NOT NULL CHECK(stock >= 0),
             supplier_id INTEGER,
             entry_date TEXT NOT NULL,
@@ -79,10 +84,10 @@ def create_schema(db):
             customer_id INTEGER,
             employee_id INTEGER NOT NULL,
             payment_method TEXT NOT NULL,
-            subtotal REAL NOT NULL,
+            subtotal INTEGER NOT NULL,
             sale_discount_percent REAL NOT NULL DEFAULT 0,
-            discount_amount REAL NOT NULL,
-            total REAL NOT NULL,
+            discount_amount INTEGER NOT NULL,
+            total INTEGER NOT NULL,
             status TEXT NOT NULL DEFAULT 'ACTIVA',
             FOREIGN KEY (customer_id) REFERENCES customers(id),
             FOREIGN KEY (employee_id) REFERENCES employees(id)
@@ -93,9 +98,9 @@ def create_schema(db):
             sale_id INTEGER NOT NULL,
             product_id INTEGER NOT NULL,
             quantity INTEGER NOT NULL CHECK(quantity > 0),
-            unit_price REAL NOT NULL,
+            unit_price INTEGER NOT NULL,
             promo_discount_percent REAL NOT NULL DEFAULT 0,
-            line_total REAL NOT NULL,
+            line_total INTEGER NOT NULL,
             FOREIGN KEY (sale_id) REFERENCES sales(id),
             FOREIGN KEY (product_id) REFERENCES products(id)
         );
@@ -145,7 +150,7 @@ def create_schema(db):
 
 
 # ============================================================
-# MIGRACIONES
+# MIGRACIÓN 1
 # ============================================================
 
 def migracion_1(db):
@@ -153,8 +158,7 @@ def migracion_1(db):
     Migración 1:
     Agrega products_supplied y last_order_date a suppliers.
 
-    Comprueba las columnas existentes para poder trabajar
-    con bases antiguas que ya tengan alguna de ellas.
+    Comprueba las columnas existentes para evitar duplicarlas.
     """
 
     columnas = [
@@ -174,15 +178,159 @@ def migracion_1(db):
 
 
 # ============================================================
+# MIGRACIÓN 2
+# ============================================================
+
+def migracion_2(db):
+    """
+    Migración 2:
+    Convierte los importes monetarios de pesos a centavos.
+
+    Conserva los identificadores, datos y relaciones de las tablas.
+    Esta migración se ejecuta una sola vez.
+    """
+
+    # --------------------------------------------------------
+    # 1. Crear tabla products con precios en centavos.
+    # --------------------------------------------------------
+
+    db.conn.execute("""
+        CREATE TABLE products_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            code TEXT NOT NULL UNIQUE,
+            name TEXT NOT NULL,
+            category TEXT NOT NULL,
+            size TEXT NOT NULL,
+            color TEXT NOT NULL,
+            purchase_price INTEGER NOT NULL
+                CHECK(purchase_price >= 0),
+            sale_price INTEGER NOT NULL
+                CHECK(sale_price >= 0),
+            stock INTEGER NOT NULL CHECK(stock >= 0),
+            supplier_id INTEGER,
+            entry_date TEXT NOT NULL,
+            brand TEXT,
+            season TEXT,
+            image_path TEXT,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (supplier_id) REFERENCES suppliers(id)
+        )
+    """)
+
+    db.conn.execute("""
+        INSERT INTO products_new (
+            id, code, name, category, size, color,
+            purchase_price, sale_price, stock, supplier_id,
+            entry_date, brand, season, image_path, created_at
+        )
+        SELECT
+            id, code, name, category, size, color,
+            CAST(ROUND(purchase_price * 100) AS INTEGER),
+            CAST(ROUND(sale_price * 100) AS INTEGER),
+            stock, supplier_id, entry_date, brand, season,
+            image_path, created_at
+        FROM products
+    """)
+
+    # --------------------------------------------------------
+    # 2. Crear tabla sales con importes en centavos.
+    # --------------------------------------------------------
+
+    db.conn.execute("""
+        CREATE TABLE sales_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sale_datetime TEXT NOT NULL,
+            customer_id INTEGER,
+            employee_id INTEGER NOT NULL,
+            payment_method TEXT NOT NULL,
+            subtotal INTEGER NOT NULL,
+            sale_discount_percent REAL NOT NULL DEFAULT 0,
+            discount_amount INTEGER NOT NULL,
+            total INTEGER NOT NULL,
+            status TEXT NOT NULL DEFAULT 'ACTIVA',
+            FOREIGN KEY (customer_id) REFERENCES customers(id),
+            FOREIGN KEY (employee_id) REFERENCES employees(id)
+        )
+    """)
+
+    db.conn.execute("""
+        INSERT INTO sales_new (
+            id, sale_datetime, customer_id, employee_id,
+            payment_method, subtotal, sale_discount_percent,
+            discount_amount, total, status
+        )
+        SELECT
+            id, sale_datetime, customer_id, employee_id,
+            payment_method,
+            CAST(ROUND(subtotal * 100) AS INTEGER),
+            sale_discount_percent,
+            CAST(ROUND(discount_amount * 100) AS INTEGER),
+            CAST(ROUND(total * 100) AS INTEGER),
+            status
+        FROM sales
+    """)
+
+    # --------------------------------------------------------
+    # 3. Crear tabla sale_items con importes en centavos.
+    # --------------------------------------------------------
+
+    db.conn.execute("""
+        CREATE TABLE sale_items_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sale_id INTEGER NOT NULL,
+            product_id INTEGER NOT NULL,
+            quantity INTEGER NOT NULL CHECK(quantity > 0),
+            unit_price INTEGER NOT NULL,
+            promo_discount_percent REAL NOT NULL DEFAULT 0,
+            line_total INTEGER NOT NULL,
+            FOREIGN KEY (sale_id) REFERENCES sales(id),
+            FOREIGN KEY (product_id) REFERENCES products(id)
+        )
+    """)
+
+    db.conn.execute("""
+        INSERT INTO sale_items_new (
+            id, sale_id, product_id, quantity,
+            unit_price, promo_discount_percent, line_total
+        )
+        SELECT
+            id, sale_id, product_id, quantity,
+            CAST(ROUND(unit_price * 100) AS INTEGER),
+            promo_discount_percent,
+            CAST(ROUND(line_total * 100) AS INTEGER)
+        FROM sale_items
+    """)
+
+    # --------------------------------------------------------
+    # 4. Reemplazar las tablas anteriores.
+    # --------------------------------------------------------
+
+    # Se eliminan primero las tablas que dependen de las otras.
+    db.conn.execute("DROP TABLE sale_items")
+    db.conn.execute("DROP TABLE sales")
+    db.conn.execute("DROP TABLE products")
+
+    # Se asignan los nombres originales a las tablas nuevas.
+    db.conn.execute(
+        "ALTER TABLE products_new RENAME TO products"
+    )
+
+    db.conn.execute(
+        "ALTER TABLE sales_new RENAME TO sales"
+    )
+
+    db.conn.execute(
+        "ALTER TABLE sale_items_new RENAME TO sale_items"
+    )
+
+
+# ============================================================
 # REGISTRO DE MIGRACIONES
 # ============================================================
 
-# Las migraciones se ejecutan en orden ascendente.
-# Cuando se agreguen nuevas migraciones, se deben numerar
-# consecutivamente: 2, 3, 4, etc.
-
 MIGRACIONES = [
     (1, migracion_1),
+    (2, migracion_2),
 ]
 
 
@@ -192,10 +340,11 @@ MIGRACIONES = [
 
 def migrate_schema(db):
     """
-    Consulta la versión de la base de datos y ejecuta
-    únicamente las migraciones pendientes.
+    Ejecuta las migraciones pendientes en orden ascendente.
 
-    PRAGMA user_version almacena la versión actual del esquema.
+    La conversión de tablas se realiza con las claves foráneas
+    temporalmente desactivadas. Antes de confirmar la transacción
+    se comprueba que no existan relaciones inválidas.
     """
 
     version_actual = db.scalar("PRAGMA user_version")
@@ -205,8 +354,6 @@ def migrate_schema(db):
 
     ultima_version = MIGRACIONES[-1][0] if MIGRACIONES else 0
 
-    # No permite utilizar una base de datos más nueva
-    # que las migraciones conocidas por esta aplicación.
     if version_actual > ultima_version:
         raise RuntimeError(
             f"La base de datos tiene la versión {version_actual}, "
@@ -214,27 +361,51 @@ def migrate_schema(db):
             f"{ultima_version}."
         )
 
-    # Inicia una transacción para que las migraciones
-    # se apliquen juntas y puedan revertirse si ocurre un error.
-    db.conn.execute("BEGIN IMMEDIATE")
+    pendientes = [
+        (numero, funcion)
+        for numero, funcion in MIGRACIONES
+        if numero > version_actual
+    ]
+
+    if not pendientes:
+        return
+
+    # Debe ejecutarse antes de comenzar la transacción.
+    db.conn.execute("PRAGMA foreign_keys = OFF")
 
     try:
-        for numero, funcion in MIGRACIONES:
+        db.conn.execute("BEGIN IMMEDIATE")
 
-            # Solo ejecuta migraciones posteriores a la versión actual.
-            if numero > version_actual:
+        for numero, funcion in pendientes:
+            funcion(db)
 
-                funcion(db)
+            db.conn.execute(
+                f"PRAGMA user_version = {numero}"
+            )
 
-                # Guarda la nueva versión después de cada migración.
-                db.conn.execute(
-                    f"PRAGMA user_version = {numero}"
-                )
+        # Comprueba las relaciones antes de confirmar.
+        errores = db.query("PRAGMA foreign_key_check")
 
-        # Confirma todos los cambios.
+        if errores:
+            raise RuntimeError(
+                "La migración produjo errores en las claves foráneas. "
+                f"Detalles: {errores}"
+            )
+
         db.conn.commit()
 
     except Exception:
-        # Revierte los cambios si alguna migración falla.
         db.conn.rollback()
         raise
+
+    finally:
+        # Se vuelven a activar las claves foráneas.
+        db.conn.execute("PRAGMA foreign_keys = ON")
+
+    # Comprueba que las claves foráneas estén activas.
+    estado_fk = db.scalar("PRAGMA foreign_keys")
+
+    if estado_fk != 1:
+        raise RuntimeError(
+            "No fue posible activar las claves foráneas."
+        )

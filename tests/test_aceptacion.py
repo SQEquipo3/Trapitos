@@ -74,7 +74,7 @@ def test_vd03_dia_de_venta_con_promocion_y_descuento_general(db, empleado):
       'quantity': 2}]).
     - Leer el stock con stock(db, pid).
     Esperado:
-    - Subtotal = 1600 (2 × $1000 × 0.8), descuento = 160, total = 1440.
+    - Subtotal = 160000 centavos (2 × $1000 × 0.8), descuento = 16000, total = 144000.
     - Stock = 8.
     """
     pid = alta(db, "S1", price=1000, stock_=10)
@@ -82,7 +82,7 @@ def test_vd03_dia_de_venta_con_promocion_y_descuento_general(db, empleado):
     cid = clientes.guardar(db, None, ("Ana", "1", "a@x", "c", "GDL", ""))
     _, sub, desc, total = ventas_srv.registrar(db, cid, empleado, "Tarjeta de credito", 10,
                                            [{"product_id": pid, "quantity": 2}])
-    assert (sub, desc, total) == (1600, 160, 1440) and stock(db, pid) == 8
+    assert (sub, desc, total) == (160000, 16000, 144000) and stock(db, pid) == 8
 
 
 @tc("ATS_VD_04", nivel="ATS", modulo="ventas", reqs=["RF-05"],
@@ -125,13 +125,13 @@ def test_vd05_promocion_deja_de_aplicar_al_vencer(db, empleado):
     - Vender 1 pieza con ventas_srv.registrar(db, None, empleado, 'Efectivo', 0, [...]).
     - Ejecutar reportes.ejecutar(db, 'Productos en oferta').
     Esperado:
-    - Subtotal = 100 (sin descuento).
+    - Subtotal = 10000 centavos ($100, sin descuento).
     - El reporte de ofertas regresa [].
     """
     pid = alta(db, "P1", price=100)
     promociones.guardar(db, None, pid, 50, dias(-5)[:10], dias(-1)[:10])
     _, sub, *_ = ventas_srv.registrar(db, None, empleado, "Efectivo", 0, [{"product_id": pid, "quantity": 1}])
-    assert sub == 100 and reportes.ejecutar(db, "Productos en oferta") == []
+    assert sub == 10000 and reportes.ejecutar(db, "Productos en oferta") == []
 
 
 @tc("ATS_VD_06", nivel="ATS", modulo="contactos", reqs=["RF-11", "RF-12"],

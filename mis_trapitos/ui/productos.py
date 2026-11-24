@@ -3,7 +3,7 @@
 Recibe la base de datos abierta por la aplicación. No crea conexiones ni
 importa el punto de entrada; los datos se leen y guardan con los repositorios.
 """
-
+from utils import dinero_centavos
 import csv
 import os
 import tkinter as tk
@@ -223,6 +223,9 @@ class ProductosUI(ScrollablePage):
         for index, row in enumerate(rows):
             item_id = str(row["id"])
             values = [row[key] for key in row.keys()]
+
+# El precio almacenado en la base está en centavos.
+            values[7] = dinero_centavos(row["precio"])
             if self.products_tree.exists(item_id):
                 self.products_tree.item(item_id, values=values)
                 self.products_tree.move(item_id, "", index)
@@ -252,10 +255,20 @@ class ProductosUI(ScrollablePage):
         self.selected_product_id = row["id"]
         self._loaded_stock = int(row["stock"])
         values = [
-            row["code"], row["name"], row["category"], row["size"], row["color"],
-            row["purchase_price"], row["sale_price"], row["stock"], row["supplier_id"],
-            row["entry_date"], row["brand"], row["season"], row["image_path"],
-        ]
+    row["code"],
+    row["name"],
+    row["category"],
+    row["size"],
+    row["color"],
+    f"{int(row['purchase_price']) / 100:.2f}",
+    f"{int(row['sale_price']) / 100:.2f}",
+    row["stock"],
+    row["supplier_id"],
+    row["entry_date"],
+    row["brand"],
+    row["season"],
+    row["image_path"],
+]
         for entry, value in zip(self._product_entries(), values):
             entry.delete(0, tk.END)
             entry.insert(0, "" if value is None else str(value))
