@@ -62,6 +62,57 @@ Con `python main.py` abrimos la aplicación local. Con `python main.py --servido
 ```mermaid
 classDiagram
 direction TB
+class App {
+    +db
+    +user
+    +show_main()
+    +sondear_cambios()
+}
+class VentasUI {
+    +servicio
+    +add_cart_item()
+    +register_sale_ui()
+}
+class ProductosUI {
+    +selected_product_id
+    +save_product_ui()
+    +actualizar_inventario()
+}
+class ServicioVentas {
+    +db
+    +cart
+    +totales(descuento=0)
+    +vaciar()
+}
+class Database {
+    +path
+    +conn
+    +transaction()
+    +version_datos()
+}
+class TerminalLAN {
+    +carrito
+    +cliente
+    +sondear()
+    +register_sale_ui()
+}
+class CarritoLAN {
+    +cart
+    +pendiente
+    +registrar(cliente_id, metodo_pago, descuento)
+}
+class ClienteLAN {
+    +url
+    +token
+    +inventario()
+    +consultar_venta(clave)
+}
+class ServidorLAN {
+    +db_path
+    +puerto
+    +iniciar()
+    +detener()
+}
 App --> Database
 App --> VentasUI
 App --> ProductosUI
