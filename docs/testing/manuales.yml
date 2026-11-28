@@ -77,9 +77,13 @@
   - El Vendedor ve el mensaje «Acceso denegado», sin formulario ni listado de empleados.
   - El Administrador o Propietario puede crear y editar empleados.
   - El cambio de sesión no conserva los permisos del usuario anterior.
+  manual_result: PASSED
+  executed_by: Sandra Elizabeth Barajas Bañuelos
+  executed_on: '2026-11-22'
   comments: >-
-    Corrección de la brecha B-04 del SDD (issue #57). Pendiente de ejecución manual. Regresiones
-    automatizadas: STS_SEG_01 e ITS_SEG_01 (tests/test_permisos_empleados.py).
+    Elizabeth reportó que pudo administrar empleados con la cuenta administradora. Al volver como
+    vendedora vio «Acceso denegado», sin lista ni formulario.
+    Registro de la sesión: evidencias/2026-11-22/ATS_SEG_01.md.
 
 - id: ATS_VD_08
   level: ATS
@@ -96,7 +100,12 @@
   - Registrar duración y stock de ambas terminales
   expected:
   - Ambas terminales muestran stock 9; B se actualiza en un máximo de 5 segundos
-  comments: 'Desbloqueado por #56 (servicio LAN; regresión automatizada en STS_LAN_02 e ITS_LAN_01). La verificación requiere dos terminales conectadas al mismo servicio LAN, con registros del cambio de inventario y del tiempo de actualización.'
+  manual_result: PASSED
+  executed_by: Sandra Elizabeth Barajas Bañuelos
+  executed_on: '2026-11-22'
+  comments: >-
+    Elizabeth reportó que el inventario de la otra terminal se actualizó en 5 segundos después
+    de la venta. Registro de la sesión: evidencias/2026-11-22/ATS_VD_08.md.
 
 - id: ATS_VD_09
   level: ATS
@@ -114,4 +123,9 @@
   expected:
   - Una venta se registra y la otra se rechaza por stock insuficiente
   - Solo se descuenta una unidad; el stock final es 0 en ambas terminales y nunca es negativo
-  comments: 'Desbloqueado por #56 (regresión automatizada en STS_LAN_01). Registrar qué terminal concretó la venta y la evidencia de la otra respuesta; ver ACEPTACION_MANUAL.md.'
+  manual_result: PASSED
+  executed_by: Sandra Elizabeth Barajas Bañuelos
+  executed_on: '2026-11-22'
+  comments: >-
+    Elizabeth reportó que solo una computadora completó la venta de la última prenda.
+    La otra indicó que ya no había existencias. Registro de la sesión: evidencias/2026-11-22/ATS_VD_09.md.
